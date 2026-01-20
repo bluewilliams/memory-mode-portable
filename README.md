@@ -10,6 +10,7 @@ When enabled, Claude will:
 - Recover seamlessly when context is lost
 - Maintain separate memory for each project you work on
 - **Coordinate memory across sub-agents** (v1.1.0+)
+- **Remember your preferences across all projects** (v1.2.0+)
 
 **From your perspective**: Work normally. Claude never forgets.
 
@@ -17,52 +18,60 @@ When enabled, Claude will:
 
 ### Quick Install (Copy-Paste)
 
-1. **Copy `MEMORY.md` to your global Claude config:**
+1. **Copy config files to your global Claude config:**
    ```bash
    cp ~/.claude/memory-mode-portable/MEMORY.md ~/.claude/MEMORY.md
+   cp ~/.claude/memory-mode-portable/USER.md ~/.claude/USER.md
    ```
 
-2. **Add reference to your `~/.claude/CLAUDE.md`:**
+2. **Create the user profile directory:**
+   ```bash
+   mkdir -p ~/.claude/user
+   ```
 
-   Open `~/.claude/CLAUDE.md` and add this line:
+3. **Add references to your `~/.claude/CLAUDE.md`:**
+
+   Open `~/.claude/CLAUDE.md` and add these lines:
    ```
    @MEMORY.md
+   @USER.md
    ```
 
    If you don't have a `CLAUDE.md` file yet, create one:
    ```bash
-   echo "@MEMORY.md" > ~/.claude/CLAUDE.md
+   printf "@MEMORY.md\n@USER.md\n" > ~/.claude/CLAUDE.md
    ```
 
-3. **Done!** Start using it in any project with `/memory start`
+4. **Done!** Start using it in any project with `/memory start`
 
 ### Fresh Claude Installation
 
 If you're setting up Claude Code from scratch:
 
-1. **Create the global config directory:**
+1. **Create the global config directories:**
    ```bash
-   mkdir -p ~/.claude
+   mkdir -p ~/.claude ~/.claude/user
    ```
 
-2. **Copy the memory mode file:**
+2. **Copy the config files:**
    ```bash
    cp /path/to/memory-mode-portable/MEMORY.md ~/.claude/MEMORY.md
+   cp /path/to/memory-mode-portable/USER.md ~/.claude/USER.md
    ```
 
 3. **Create or update CLAUDE.md:**
    ```bash
    # If you have no other Claude config:
-   echo "@MEMORY.md" > ~/.claude/CLAUDE.md
+   printf "@MEMORY.md\n@USER.md\n" > ~/.claude/CLAUDE.md
 
-   # Or if you have existing config, add the reference:
-   echo "@MEMORY.md" >> ~/.claude/CLAUDE.md
+   # Or if you have existing config, add the references:
+   printf "@MEMORY.md\n@USER.md\n" >> ~/.claude/CLAUDE.md
    ```
 
 ### Sharing With a Friend
 
 Send them:
-1. This `memory-mode-portable/` folder (or just `MEMORY.md` and this `README.md`)
+1. This `memory-mode-portable/` folder (includes `MEMORY.md`, `USER.md`, and this `README.md`)
 2. Tell them to follow the "Fresh Claude Installation" steps above
 
 ## Usage
@@ -118,7 +127,20 @@ your-project/
         ├── analysis/           # File/component analyses
         ├── context/            # Current task & blockers
         ├── progress/           # Work tracking
-        └── subagent/           # Sub-agent outputs (v1.1.0+)
+        ├── subagent/           # Sub-agent outputs (v1.1.0+)
+        └── user/               # Project-specific user context (v1.2.0+)
+```
+
+### Global User Profile (v1.2.0+)
+Your preferences follow you across all projects:
+```
+~/.claude/user/
+├── profile.md          # Identity & background
+├── preferences.md      # Communication & workflow preferences
+├── communication.md    # Style preferences
+├── technical.md        # Skills & interests
+├── observations.md     # Patterns noticed (transparent)
+└── feedback.md         # What works/doesn't work
 ```
 
 ### Compaction Detection
@@ -164,12 +186,69 @@ When memory mode is active and you ask Claude to use sub-agents, it will automat
 - Direct sub-agents to write to the `subagent/` directory
 - Consolidate results after sub-agents complete
 
+## User Preferences (v1.2.0+)
+
+Claude can learn and remember your preferences over time.
+
+### How It Works
+
+**Three ways Claude learns:**
+1. **Explicit**: Tell Claude directly - "I prefer concise explanations"
+2. **Observed**: Claude notices patterns and asks - "Should I remember that you prefer code examples first?"
+3. **Feedback**: Tell Claude what worked - "That explanation was perfect"
+
+### User Commands
+
+```
+/user              # Show your profile
+/user update       # Update preferences
+/user forget X     # Remove specific information
+/user export       # Export for backup/portability
+/user import       # Import from backup
+```
+
+### Transparency
+
+Claude always announces what it stores:
+```
+📝 Noted: You prefer concise explanations
+```
+
+And references preferences when using them:
+```
+💭 Based on your preference for code-first explanations, here's the implementation...
+```
+
+### Privacy & Control
+- You can see everything stored (`/user`)
+- You can delete anything (`/user forget`)
+- Observations require your confirmation before storing
+- Export/import for portability between machines
+
+## Gitignore Integration (v1.2.0+)
+
+On `/memory start`, Claude will ask if you want to add `.claude/memory/` to your `.gitignore` to prevent accidentally committing session context.
+
+Options:
+- **Yes**: Add to this project
+- **No**: Skip for now
+- **Always**: Remember preference, auto-add for all projects
+- **Never ask again**: Remember preference, never prompt
+
 ## File Structure Reference
 
 ```
 ~/.claude/                          # Global config (shared across projects)
-├── CLAUDE.md                       # References @MEMORY.md
-└── MEMORY.md                       # Memory mode instructions
+├── CLAUDE.md                       # References @MEMORY.md and @USER.md
+├── MEMORY.md                       # Memory mode instructions
+├── USER.md                         # User preference instructions (v1.2.0+)
+└── user/                           # Global user profile (v1.2.0+)
+    ├── profile.md
+    ├── preferences.md
+    ├── communication.md
+    ├── technical.md
+    ├── observations.md
+    └── feedback.md
 
 ~/any-project/.claude/memory/       # Per-project data (auto-created)
 ├── _index.md
@@ -178,7 +257,8 @@ When memory mode is active and you ask Claude to use sub-agents, it will automat
 ├── analysis/
 ├── context/
 ├── progress/
-└── subagent/                       # Sub-agent outputs
+├── subagent/                       # Sub-agent outputs
+└── user/                           # Project-specific user context
 ```
 
 ## Troubleshooting
@@ -215,6 +295,16 @@ This regenerates the index from actual files.
 - Use `/memory rebuild` to force index regeneration
 
 ## Version History
+
+### v1.2.0 - User Preference & Relationship Tracking
+- New `~/.claude/user/` global profile directory
+- Two-tier storage: global profile + project-specific context
+- `/user` commands for profile management
+- Three-way learning protocol (explicit, observed, feedback)
+- Transparency markers for stored observations
+- Gitignore integration on `/memory start`
+- Export/import for profile portability
+- New `user/` subdirectory in project memory
 
 ### v1.1.0 - Sub-Agent Integration
 - New `subagent/` directory for sub-agent outputs
