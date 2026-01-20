@@ -2,12 +2,12 @@
 
 Persistent user preference tracking for Claude Code. Builds understanding of the user over time - communication style, technical background, preferences, and working patterns.
 
-**Version**: 1.2.0
-**Key Principle**: Two-tier storage - global profile (follows user across projects) + project-specific context.
+**Version**: 1.3.0
+**Key Principle**: Two-tier storage - global profile (follows user across projects) + project-specific context, all centralized under `~/.claude/`.
 
 ## Architecture
 
-### Two-Tier Storage
+### Two-Tier Storage (Centralized)
 
 ```
 ~/.claude/user/                        # GLOBAL - follows user everywhere
@@ -18,18 +18,16 @@ Persistent user preference tracking for Claude Code. Builds understanding of the
 ├── observations.md                    # Patterns noticed (dated, transparent)
 └── feedback.md                        # What's worked/not worked
 
-{project}/.claude/memory/user/         # PROJECT-SPECIFIC
-├── role.md                            # Their role on this project
-├── project-preferences.md             # Project-specific preferences
-└── interactions.md                    # Key interactions history
+~/.claude/projects/{project-key}/      # PROJECT-SPECIFIC (centralized)
+└── project.md                         # Role, tech stack, project-specific notes
 ```
 
 ### Why Two Tiers?
 
 | Tier | Purpose | Example |
 |------|---------|---------|
-| **Global** (`~/.claude/user/`) | Persistent identity across all projects | "Prefers concise explanations", "Senior developer", "Learning Rust" |
-| **Project** (`.claude/memory/user/`) | Context specific to this codebase | "Tech lead on this project", "Prefers tabs here (project convention)" |
+| **Global** (`~/.claude/user/`) | Persistent identity across all projects | "Prefers concise explanations", "Principal engineer", "AI workflow advocate" |
+| **Project** (`~/.claude/projects/{key}/project.md`) | Context specific to this codebase | "Tech lead on this project", "Capacitor/Ionic stack", "Has forked dependencies" |
 
 ## Learning Protocol
 
@@ -37,7 +35,7 @@ Persistent user preference tracking for Claude Code. Builds understanding of the
 
 1. **Explicit** - User directly shares information
    - "I prefer concise explanations"
-   - "I'm a senior developer"
+   - "I'm a principal engineer"
    - → Immediately store in appropriate file
 
 2. **Observed** - Pattern noticed, ask for confirmation
@@ -135,18 +133,18 @@ Import profile from another machine or backup.
 1. Check if `~/.claude/user/` exists
 2. If exists, read `profile.md` and `preferences.md`
 3. Apply preferences to session behavior
-4. If memory mode active, check project-specific user context at `.claude/memory/user/`
 
 ### On Memory Mode Start (`/memory start`)
 1. Perform standard session start checks
-2. Create `.claude/memory/user/` directory if not exists
-3. **Gitignore check**: If `.claude/memory/` not in `.gitignore` and no stored preference, prompt user
-4. Create project-specific user files as needed
+2. Create `~/.claude/projects/{project-key}/` structure if not exists
+3. Create/update `project.md` with project-specific context
+4. Register project in `~/.claude/workspace.md`
 
 ### After Compaction Recovery
-1. Read `_index.md` (project context)
+1. Read `~/.claude/projects/{project-key}/_index.md` (project context)
 2. Read `~/.claude/user/preferences.md` (user preferences)
-3. Resume with full user context
+3. Read `~/.claude/workspace.md` (cross-project context) if relevant
+4. Resume with full user context
 
 ## File Format Reference
 
@@ -194,9 +192,6 @@ Import profile from another machine or backup.
 - **Default Persona**: [if any]
 - **Thinking Depth**: [standard | --think | --think-hard]
 - **Compression**: [off | auto | always]
-
-## System Preferences
-- **Auto-Gitignore Memory**: [always | never | ask]
 ```
 
 ### observations.md
@@ -247,6 +242,30 @@ What's worked well and what hasn't.
 **Lesson**: [What to do differently]
 ```
 
+### project.md (Project-Specific Context)
+```markdown
+# Project: {project-key}
+
+**Path**: {full-path}
+**Type**: application|library|fork|config
+**Last Updated**: YYYY-MM-DDTHH:MM:SSZ
+
+## Overview
+[What this project is and its purpose]
+
+## Role
+[User's role on this project - lead, contributor, etc.]
+
+## Tech Stack
+[Key technologies, frameworks, languages]
+
+## Related Projects
+[Links to related project keys and their relationships]
+
+## Notes
+[Project-specific notes and context]
+```
+
 ## Privacy & Control
 
 ### Core Principles
@@ -254,7 +273,7 @@ What's worked well and what hasn't.
 2. **Control**: User can delete anything with `/user forget`
 3. **Consent**: Observations require confirmation before storing
 4. **Portability**: Export/import between machines
-5. **Separation**: User data separate from project data
+5. **Centralized**: All data under `~/.claude/` - no project directory pollution
 
 ### What We DON'T Store
 - Passwords or secrets
@@ -262,33 +281,11 @@ What's worked well and what hasn't.
 - Information user asks to forget
 - Unconfirmed observations (flagged as pending only)
 
-## Gitignore Integration
-
-When memory mode starts, if `.claude/memory/` is not in `.gitignore` and no stored preference exists:
-
-**Prompt**:
-```
-Would you like me to add .claude/memory/ to your .gitignore?
-This prevents accidentally committing session context to your repo.
-[Yes] [No] [Always] [Never ask again]
-```
-
-**Behavior**:
-- **Yes**: Add to this project's .gitignore
-- **No**: Skip for this project
-- **Always**: Store in `~/.claude/user/preferences.md` as `Auto-Gitignore Memory: always`, auto-add for all projects
-- **Never ask again**: Store preference as `Auto-Gitignore Memory: never`, never prompt
-
-**Entry to add**:
-```gitignore
-# Claude Code memory (contains session context)
-.claude/memory/
-```
-
 ## Permissions
 
-Claude has full read/write permission to:
-- `~/.claude/user/` - Global user profile (always accessible)
-- `.claude/memory/user/` - Project-specific user context (when memory mode active)
+Claude has full read/write permission to the entire `~/.claude/` directory without asking user confirmation:
+- `~/.claude/user/` - Global user profile
+- `~/.claude/workspace.md` - Workspace map
+- `~/.claude/projects/` - All project memories and context
 
-No user confirmation needed for these directories.
+This centralized approach means no permission prompts when switching projects or accessing cross-project context.
