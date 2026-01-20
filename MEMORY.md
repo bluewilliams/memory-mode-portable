@@ -29,8 +29,12 @@ Autonomous context persistence system for Claude Code. Maintains context across 
 ├── progress/                       # Work tracking
 │   ├── active.md
 │   └── completed.md
-└── subagent/                       # Sub-agent outputs (v1.1.0+)
-    └── YYYY-MM-DD_HHMMSS_taskname.md
+├── subagent/                       # Sub-agent outputs (v1.1.0+)
+│   └── YYYY-MM-DD_HHMMSS_taskname.md
+└── user/                           # Project-specific user context (v1.2.0+)
+    ├── role.md                     # Their role on this project
+    ├── project-preferences.md      # Project-specific preferences
+    └── interactions.md             # Key interactions history
 ```
 
 ## Session Commands
@@ -39,7 +43,7 @@ Autonomous context persistence system for Claude Code. Maintains context across 
 Initializes memory mode for the current project.
 
 **Actions**:
-1. Create `.claude/memory/` directory structure if not exists (including `subagent/`)
+1. Create `.claude/memory/` directory structure if not exists (including `subagent/` and `user/`)
 2. Create/update `_session.json`:
    ```json
    {
@@ -53,7 +57,9 @@ Initializes memory mode for the current project.
    ```
 3. Update `_index.md` with session start info and ACTIVE status
 4. Create placeholder files in context/ and progress/ if not exist
-5. Confirm: "Infinite memory mode active. I'll manage my context autonomously."
+5. **Load user preferences**: Read `~/.claude/user/preferences.md` if exists
+6. **Gitignore check**: If `.claude/memory/` not in `.gitignore` and no stored preference, prompt user (see Gitignore Integration)
+7. Confirm: "Infinite memory mode active. I'll manage my context autonomously."
 
 ### `/memory stop`
 Deactivates memory mode (preserves all files).
@@ -352,3 +358,71 @@ Multiple sessions in the same project are tracked via:
 - Date-prefixed filenames prevent collisions
 - `/memory stop` archives the session before starting fresh
 - Old sessions remain accessible in archive and individual files
+
+## User Preference Protocol
+
+### Global User Profile
+User profile is stored at `~/.claude/user/` and persists across all projects. See USER.md for full details.
+
+**Two-Tier Storage**:
+- **Global** (`~/.claude/user/`): Identity, preferences, communication style - follows user everywhere
+- **Project** (`.claude/memory/user/`): Role on this project, project-specific preferences
+
+### Learning Protocol
+1. **Explicit**: Store immediately when user shares preferences
+2. **Observed**: Ask before storing patterns noticed
+3. **Feedback**: Record what works/doesn't work
+
+### Transparency
+- Always announce when storing observations: `📝 Noted: [description]`
+- Reference preferences when using them: `💭 Based on your preference...`
+
+### User Commands
+- `/user` - Show profile
+- `/user update [category]` - Update preferences
+- `/user forget [topic]` - Remove information
+- `/user history` - View changes
+- `/user export` - Export profile for portability
+- `/user import [file]` - Import profile from backup
+
+### Session Integration
+On `/memory start`:
+1. Load global user preferences from `~/.claude/user/`
+2. Load project-specific context from `.claude/memory/user/` if exists
+3. Apply preferences to session behavior
+
+After compaction recovery:
+1. Read `_index.md` (project context)
+2. Read `~/.claude/user/preferences.md` (user preferences)
+3. Resume with full context
+
+## Gitignore Integration
+
+### On `/memory start`
+If `.claude/memory/` is not in `.gitignore` and no stored preference exists, prompt the user:
+
+```
+Would you like me to add .claude/memory/ to your .gitignore?
+This prevents accidentally committing session context to your repo.
+[Yes] [No] [Always] [Never ask again]
+```
+
+### Behavior Options
+- **Yes**: Add to this project's `.gitignore`
+- **No**: Skip for this project
+- **Always**: Store in `~/.claude/user/preferences.md` as `Auto-Gitignore Memory: always`, auto-add for all future projects
+- **Never ask again**: Store preference as `Auto-Gitignore Memory: never`, never prompt again
+
+### Entry to Add
+```gitignore
+# Claude Code memory (contains session context)
+.claude/memory/
+```
+
+### Implementation
+1. Check if `.gitignore` exists in project root
+2. Check if `.claude/memory/` already in `.gitignore`
+3. Check `~/.claude/user/preferences.md` for stored preference
+4. If no preference and not in gitignore, prompt user
+5. If user says Yes/Always, append entry to `.gitignore`
+6. Store preference in global user profile for future sessions
