@@ -11,8 +11,9 @@ When enabled, Claude will:
 - Maintain separate memory for each project you work on
 - **Coordinate memory across sub-agents** (v1.1.0+)
 - **Remember your preferences across all projects** (v1.2.0+)
+- **Recognize you automatically in every new session** (v1.2.1+)
 
-**From your perspective**: Work normally. Claude never forgets.
+**From your perspective**: Work normally. Claude never forgets - and always knows who you are.
 
 ## Installation
 
@@ -29,20 +30,18 @@ When enabled, Claude will:
    mkdir -p ~/.claude/user
    ```
 
-3. **Add references to your `~/.claude/CLAUDE.md`:**
-
-   Open `~/.claude/CLAUDE.md` and add these lines:
-   ```
-   @MEMORY.md
-   @USER.md
-   ```
-
-   If you don't have a `CLAUDE.md` file yet, create one:
+3. **Set up CLAUDE.md (for auto-recognition):**
    ```bash
-   printf "@MEMORY.md\n@USER.md\n" > ~/.claude/CLAUDE.md
+   # If you don't have a CLAUDE.md yet, use our example:
+   cp ~/.claude/memory-mode-portable/CLAUDE.md.example ~/.claude/CLAUDE.md
+
+   # Or add these lines to your existing CLAUDE.md:
+   # (Copy the SESSION START PROTOCOL from CLAUDE.md.example, then add:)
+   # @MEMORY.md
+   # @USER.md
    ```
 
-4. **Done!** Start using it in any project with `/memory start`
+4. **Done!** Claude will now recognize you in every session. Use `/memory start` for project-specific memory.
 
 ### Fresh Claude Installation
 
@@ -59,13 +58,13 @@ If you're setting up Claude Code from scratch:
    cp /path/to/memory-mode-portable/USER.md ~/.claude/USER.md
    ```
 
-3. **Create or update CLAUDE.md:**
+3. **Set up CLAUDE.md:**
    ```bash
-   # If you have no other Claude config:
-   printf "@MEMORY.md\n@USER.md\n" > ~/.claude/CLAUDE.md
+   # Recommended: Use our example config (includes auto-recognition)
+   cp /path/to/memory-mode-portable/CLAUDE.md.example ~/.claude/CLAUDE.md
 
-   # Or if you have existing config, add the references:
-   printf "@MEMORY.md\n@USER.md\n" >> ~/.claude/CLAUDE.md
+   # Or if you have existing config, add the session protocol and references
+   # (see CLAUDE.md.example for the SESSION START PROTOCOL to copy)
    ```
 
 ### Sharing With a Friend
@@ -295,6 +294,12 @@ This regenerates the index from actual files.
 - Use `/memory rebuild` to force index regeneration
 
 ## Version History
+
+### v1.2.1 - Auto-Recognition
+- New `CLAUDE.md.example` with SESSION START PROTOCOL
+- Claude automatically reads user profile on every new session
+- No command needed for relationship continuity
+- Updated installation instructions
 
 ### v1.2.0 - User Preference & Relationship Tracking
 - New `~/.claude/user/` global profile directory
