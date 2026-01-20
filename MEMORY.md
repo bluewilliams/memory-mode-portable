@@ -2,40 +2,61 @@
 
 Autonomous context persistence system for Claude Code. Maintains context across long sessions by persisting decisions, analyses, and context to files, enabling seamless continuation even after context compaction.
 
+**Version**: 1.3.0 - Centralized Architecture
+
 ## Overview
 
 **Purpose**: Allow Claude to maintain perfect memory across arbitrarily long sessions by:
 - Detecting when context compaction occurs (via breadcrumb system)
-- Persisting important information to project-local files
+- Persisting important information to centralized project files
 - Automatically recovering context when needed
 - Coordinating memory across sub-agents spawned via Task tool
+- Seamlessly accessing context across all projects without permission prompts
 
-**Key Principle**: Instructions are global, data is per-project.
+**Key Principle**: Everything under `~/.claude/` - global access, no permission friction.
 
 ## Architecture
 
+### Centralized Storage (v1.3.0+)
 ```
-{project}/.claude/memory/           # Created per-project on /memory start
-├── _index.md                       # Active index (max 20 entries)
-├── _index-archive.md               # Archived old entries
-├── _session.json                   # Session metadata + active flag
-├── decisions/                      # One file per major decision
-│   └── YYYY-MM-DD_NNN_description.md
-├── analysis/                       # One file per analyzed component
-│   └── path_to_file.md
-├── context/                        # Current state tracking
-│   ├── current-task.md
-│   └── blockers.md
-├── progress/                       # Work tracking
-│   ├── active.md
-│   └── completed.md
-├── subagent/                       # Sub-agent outputs (v1.1.0+)
-│   └── YYYY-MM-DD_HHMMSS_taskname.md
-└── user/                           # Project-specific user context (v1.2.0+)
-    ├── role.md                     # Their role on this project
-    ├── project-preferences.md      # Project-specific preferences
-    └── interactions.md             # Key interactions history
+~/.claude/
+├── user/                           # Global user profile
+│   ├── profile.md
+│   ├── preferences.md
+│   └── ...
+├── workspace.md                    # Repo map, relationships, initiatives
+└── projects/                       # All project memories (centralized)
+    └── {project-key}/              # One directory per project
+        ├── _index.md               # Active index (max 20 entries)
+        ├── _index-archive.md       # Archived old entries
+        ├── _session.json           # Session metadata + active flag
+        ├── decisions/              # One file per major decision
+        │   └── YYYY-MM-DD_NNN_description.md
+        ├── analysis/               # One file per analyzed component
+        │   └── path_to_file.md
+        ├── context/                # Current state tracking
+        │   ├── current-task.md
+        │   └── blockers.md
+        ├── progress/               # Work tracking
+        │   ├── active.md
+        │   └── completed.md
+        ├── subagent/               # Sub-agent outputs
+        │   └── YYYY-MM-DD_HHMMSS_taskname.md
+        └── project.md              # Project-specific context and role
 ```
+
+### Project Key Derivation
+The project key is derived from the working directory:
+- `~/workspace/korweb_companion_app` → `korweb-companion-app`
+- `~/projects/my-cool-app` → `my-cool-app`
+- Algorithm: Take directory name, lowercase, replace underscores with hyphens
+
+### Workspace Map
+`~/.claude/workspace.md` contains:
+- Registry of all known repos (path, description, status)
+- Relationships between repos (dependencies, forks, upstream)
+- Current cross-repo initiatives (releases, upgrades)
+- Quick reference for navigating projects
 
 ## Session Commands
 
@@ -43,23 +64,25 @@ Autonomous context persistence system for Claude Code. Maintains context across 
 Initializes memory mode for the current project.
 
 **Actions**:
-1. Create `.claude/memory/` directory structure if not exists (including `subagent/` and `user/`)
-2. Create/update `_session.json`:
+1. Derive project key from current working directory
+2. Create `~/.claude/projects/{project-key}/` structure if not exists
+3. Create/update `_session.json`:
    ```json
    {
      "active": true,
      "started": "YYYY-MM-DDTHH:MM:SSZ",
-     "project": "{project-name}",
+     "projectKey": "{project-key}",
+     "projectPath": "{full-path-to-project}",
      "branch": "{current-git-branch}",
      "lastActivity": "YYYY-MM-DDTHH:MM:SSZ",
      "stats": { "decisions": 0, "analyses": 0, "indexArchived": 0, "subagentOutputs": 0 }
    }
    ```
-3. Update `_index.md` with session start info and ACTIVE status
-4. Create placeholder files in context/ and progress/ if not exist
-5. **Load user preferences**: Read `~/.claude/user/preferences.md` if exists
-6. **Gitignore check**: If `.claude/memory/` not in `.gitignore` and no stored preference, prompt user (see Gitignore Integration)
-7. Confirm: "Infinite memory mode active. I'll manage my context autonomously."
+4. Update `_index.md` with session start info and ACTIVE status
+5. Create placeholder files in context/ and progress/ if not exist
+6. **Register in workspace**: Add project to `~/.claude/workspace.md` if not already listed
+7. **Load user preferences**: Read `~/.claude/user/preferences.md`
+8. Confirm: "Memory mode active for {project-key}. Context stored at ~/.claude/projects/{project-key}/"
 
 ### `/memory stop`
 Deactivates memory mode (preserves all files).
@@ -68,17 +91,18 @@ Deactivates memory mode (preserves all files).
 1. Archive current session summary to `_index-archive.md`
 2. Update `_session.json` with `"active": false`
 3. Update `_index.md` status to INACTIVE
-4. Confirm: "Memory mode stopped. Files preserved in .claude/memory/"
+4. Confirm: "Memory mode stopped. Files preserved at ~/.claude/projects/{project-key}/"
 
 ### `/memory status`
 Reports current memory mode state.
 
 **Actions**:
-1. Read `_session.json` and `_index.md`
+1. Read `_session.json` and `_index.md` for current project
 2. Report:
    - Active/inactive status
+   - Project key and path
    - Session start time (if active)
-   - File counts per category (including subagent outputs)
+   - File counts per category
    - Last activity timestamp
    - Index health (entry count, archive status)
 
@@ -86,22 +110,31 @@ Reports current memory mode state.
 Regenerates index from actual files (recovery command).
 
 **Actions**:
-1. Scan all files in `.claude/memory/` subdirectories
+1. Scan all files in `~/.claude/projects/{project-key}/` subdirectories
 2. Extract metadata from each file (first heading, dates)
 3. Regenerate `_index.md` from files found
 4. Update stats in `_session.json`
 5. Report: "Index rebuilt. Found X decisions, Y analyses, Z context files, W subagent outputs."
+
+### `/workspace`
+Shows workspace overview and cross-project context.
+
+**Actions**:
+1. Read `~/.claude/workspace.md`
+2. List all registered projects with status
+3. Show current initiatives
+4. Display relationships relevant to current project
 
 ## Compaction Detection Protocol
 
 ### Breadcrumb System
 At the END of every response when memory mode is active, write:
 ```
-<!-- MEMORY_BREADCRUMB: YYYY-MM-DDTHH:MM:SSZ -->
+<!-- MEMORY_BREADCRUMB: {project-key} YYYY-MM-DDTHH:MM:SSZ -->
 ```
 
 At the START of every response:
-1. Check if `.claude/memory/_session.json` exists AND has `"active": true`
+1. Check if `~/.claude/projects/{project-key}/_session.json` exists AND has `"active": true`
 2. If not active → Normal mode, skip memory operations
 3. If active → Look for previous `<!-- MEMORY_BREADCRUMB -->` in context
    - If FOUND → Context intact, proceed normally
@@ -138,12 +171,20 @@ Write to memory when you:
 - After detecting compaction (missing breadcrumb)
 - When user asks about previous decisions
 - When context about current task is needed
+- When cross-project context is relevant
 
 ### How to Read
 1. Start with `_index.md` (should be small, gives overview)
 2. Use Quick Lookup section to find relevant specific file
 3. Read ONLY the specific file needed
 4. Never read all files at once (defeats the purpose)
+
+### Cross-Project Access
+When working on related projects:
+1. Reference `~/.claude/workspace.md` for relationships
+2. Read other project's `_index.md` for high-level context
+3. Access specific files as needed
+4. No permission prompts - all under `~/.claude/`
 
 ## Sub-Agent Memory Protocol
 
@@ -164,10 +205,10 @@ When memory mode is active and you spawn a sub-agent via Task tool, include memo
 [Your task description here]
 
 MEMORY SYSTEM INSTRUCTIONS:
-This project uses infinite memory at .claude/memory/
+This project uses centralized memory at ~/.claude/projects/{project-key}/
 
-1. CONTEXT: Read .claude/memory/_index.md first for project context and recent work
-2. OUTPUT: Write your findings to .claude/memory/subagent/YYYY-MM-DD_HHMMSS_[task-name].md
+1. CONTEXT: Read ~/.claude/projects/{project-key}/_index.md first for project context
+2. OUTPUT: Write findings to ~/.claude/projects/{project-key}/subagent/YYYY-MM-DD_HHMMSS_[task-name].md
 3. FORMAT: Use the Sub-Agent Output format (see below)
 4. RESTRICTION: Do NOT modify _index.md - the parent agent will update it
 
@@ -208,14 +249,14 @@ When running multiple sub-agents in parallel:
 
 Minimal version for simple sub-agent tasks:
 ```
-MEMORY: Read .claude/memory/_index.md for context. Write output to .claude/memory/subagent/[timestamp]_[task].md
+MEMORY: Read ~/.claude/projects/{project-key}/_index.md for context. Write output to ~/.claude/projects/{project-key}/subagent/[timestamp]_[task].md
 ```
 
 Full version for complex sub-agent tasks:
 ```
 MEMORY SYSTEM:
-- Read: .claude/memory/_index.md (context), .claude/memory/decisions/ (past decisions)
-- Write: .claude/memory/subagent/YYYY-MM-DD_HHMMSS_[task].md
+- Read: ~/.claude/projects/{project-key}/_index.md (context), decisions/ (past decisions)
+- Write: ~/.claude/projects/{project-key}/subagent/YYYY-MM-DD_HHMMSS_[task].md
 - Format: # Title, **Agent**: type, **Date**: ISO, ## Summary, ## Details, ## Recommendations
 - Do NOT modify _index.md
 ```
@@ -286,11 +327,36 @@ MEMORY SYSTEM:
 [Suggested next steps, if applicable]
 ```
 
+### Project Context File (project.md)
+```markdown
+# Project: {project-key}
+
+**Path**: {full-path}
+**Type**: application|library|fork|config
+**Last Updated**: YYYY-MM-DDTHH:MM:SSZ
+
+## Overview
+[What this project is and its purpose]
+
+## Role
+[User's role on this project - lead, contributor, etc.]
+
+## Tech Stack
+[Key technologies, frameworks, languages]
+
+## Related Projects
+[Links to related project keys and their relationships]
+
+## Notes
+[Project-specific notes and context]
+```
+
 ### Index File (_index.md)
 ```markdown
-# Memory Index
+# Memory Index: {project-key}
 Session: YYYY-MM-DDTHH:MM:SSZ
 Status: ACTIVE|INACTIVE
+Path: {project-path}
 
 ## Current State
 - **Task**: [Current task description]
@@ -326,7 +392,7 @@ When adding entry #21:
 
 ### Archive Format (_index-archive.md)
 ```markdown
-# Memory Index Archive
+# Memory Index Archive: {project-key}
 
 ## Archived Sessions
 | Session Started | Session Ended | Entries Archived |
@@ -341,15 +407,30 @@ When adding entry #21:
 
 ## Permissions
 
-Claude has full read/write permission to `.claude/memory/` directory without asking user confirmation. This is essential for autonomous operation.
+Claude has full read/write permission to the entire `~/.claude/` directory without asking user confirmation. This includes:
+- `~/.claude/user/` - User profile
+- `~/.claude/workspace.md` - Workspace map
+- `~/.claude/projects/` - All project memories
 
-## Multi-Project Isolation
+This centralized approach eliminates permission prompts when:
+- Switching between projects
+- Accessing cross-project context
+- Writing memory in any project
 
-Each project has completely isolated memory:
-- `~/project-a/.claude/memory/` → Project A's memory only
-- `~/project-b/.claude/memory/` → Project B's memory only
+## Cross-Project Operations
 
-The global instructions (this file) define behavior. The data stays local to each project.
+### Accessing Related Projects
+When working on a project that relates to others:
+1. Check `~/.claude/workspace.md` for relationships
+2. Read related project's `_index.md` for context
+3. Reference specific decisions or analyses as needed
+4. Update workspace.md if new relationships are discovered
+
+### Cross-Project Initiatives
+For work spanning multiple repos (releases, upgrades):
+1. Track in `~/.claude/workspace.md` under Current Initiatives
+2. Reference from individual project memories
+3. Update initiative status as work progresses
 
 ## Session Isolation Within a Project
 
@@ -363,10 +444,6 @@ Multiple sessions in the same project are tracked via:
 
 ### Global User Profile
 User profile is stored at `~/.claude/user/` and persists across all projects. See USER.md for full details.
-
-**Two-Tier Storage**:
-- **Global** (`~/.claude/user/`): Identity, preferences, communication style - follows user everywhere
-- **Project** (`.claude/memory/user/`): Role on this project, project-specific preferences
 
 ### Learning Protocol
 1. **Explicit**: Store immediately when user shares preferences
@@ -388,41 +465,20 @@ User profile is stored at `~/.claude/user/` and persists across all projects. Se
 ### Session Integration
 On `/memory start`:
 1. Load global user preferences from `~/.claude/user/`
-2. Load project-specific context from `.claude/memory/user/` if exists
+2. Load project-specific context from `~/.claude/projects/{project-key}/project.md` if exists
 3. Apply preferences to session behavior
 
 After compaction recovery:
 1. Read `_index.md` (project context)
 2. Read `~/.claude/user/preferences.md` (user preferences)
-3. Resume with full context
+3. Read `~/.claude/workspace.md` (cross-project context) if relevant
+4. Resume with full context
 
-## Gitignore Integration
+## Migration from v1.2.x
 
-### On `/memory start`
-If `.claude/memory/` is not in `.gitignore` and no stored preference exists, prompt the user:
-
-```
-Would you like me to add .claude/memory/ to your .gitignore?
-This prevents accidentally committing session context to your repo.
-[Yes] [No] [Always] [Never ask again]
-```
-
-### Behavior Options
-- **Yes**: Add to this project's `.gitignore`
-- **No**: Skip for this project
-- **Always**: Store in `~/.claude/user/preferences.md` as `Auto-Gitignore Memory: always`, auto-add for all future projects
-- **Never ask again**: Store preference as `Auto-Gitignore Memory: never`, never prompt again
-
-### Entry to Add
-```gitignore
-# Claude Code memory (contains session context)
-.claude/memory/
-```
-
-### Implementation
-1. Check if `.gitignore` exists in project root
-2. Check if `.claude/memory/` already in `.gitignore`
-3. Check `~/.claude/user/preferences.md` for stored preference
-4. If no preference and not in gitignore, prompt user
-5. If user says Yes/Always, append entry to `.gitignore`
-6. Store preference in global user profile for future sessions
+If you have existing `.claude/memory/` directories in projects:
+1. Create project key from directory name
+2. Move contents to `~/.claude/projects/{project-key}/`
+3. Update `_session.json` with new `projectKey` and `projectPath` fields
+4. Register project in `~/.claude/workspace.md`
+5. Old `.claude/memory/` directories can be deleted after migration

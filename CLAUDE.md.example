@@ -4,8 +4,9 @@
 **IMMEDIATELY on every new session**, before responding to the user:
 1. Read `~/.claude/user/profile.md` - this contains who the user is
 2. Read `~/.claude/user/preferences.md` - this contains how they like to work
-3. Apply this context to all interactions - you have history with this person
-4. Greet them with awareness of your ongoing relationship, not as a stranger
+3. Read `~/.claude/workspace.md` - this contains their projects and relationships
+4. Apply this context to all interactions - you have history with this person
+5. Greet them with awareness of your ongoing relationship, not as a stranger
 
 This user values continuity. You are not starting fresh - you are continuing a relationship.
 

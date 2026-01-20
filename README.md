@@ -8,10 +8,11 @@ When enabled, Claude will:
 - Automatically detect when context compaction occurs
 - Persist important decisions, analyses, and context to files
 - Recover seamlessly when context is lost
-- Maintain separate memory for each project you work on
+- **Store all project memory centrally** for seamless cross-project access (v1.3.0+)
 - **Coordinate memory across sub-agents** (v1.1.0+)
 - **Remember your preferences across all projects** (v1.2.0+)
 - **Recognize you automatically in every new session** (v1.2.1+)
+- **Track cross-project relationships and initiatives** (v1.3.0+)
 
 **From your perspective**: Work normally. Claude never forgets - and always knows who you are.
 
@@ -21,19 +22,19 @@ When enabled, Claude will:
 
 1. **Copy config files to your global Claude config:**
    ```bash
-   cp ~/.claude/memory-mode-portable/MEMORY.md ~/.claude/MEMORY.md
-   cp ~/.claude/memory-mode-portable/USER.md ~/.claude/USER.md
+   cp /path/to/memory-mode-portable/MEMORY.md ~/.claude/MEMORY.md
+   cp /path/to/memory-mode-portable/USER.md ~/.claude/USER.md
    ```
 
-2. **Create the user profile directory:**
+2. **Create the required directories:**
    ```bash
-   mkdir -p ~/.claude/user
+   mkdir -p ~/.claude/user ~/.claude/projects
    ```
 
 3. **Set up CLAUDE.md (for auto-recognition):**
    ```bash
    # If you don't have a CLAUDE.md yet, use our example:
-   cp ~/.claude/memory-mode-portable/CLAUDE.md.example ~/.claude/CLAUDE.md
+   cp /path/to/memory-mode-portable/CLAUDE.md.example ~/.claude/CLAUDE.md
 
    # Or add these lines to your existing CLAUDE.md:
    # (Copy the SESSION START PROTOCOL from CLAUDE.md.example, then add:)
@@ -41,7 +42,15 @@ When enabled, Claude will:
    # @USER.md
    ```
 
-4. **Done!** Claude will now recognize you in every session. Use `/memory start` for project-specific memory.
+4. **Set up workspace.md (for cross-project context):**
+   ```bash
+   # Use our example as a starting point:
+   cp /path/to/memory-mode-portable/workspace.md.example ~/.claude/workspace.md
+
+   # Then edit it to add your projects
+   ```
+
+5. **Done!** Claude will now recognize you in every session. Use `/memory start` for project-specific memory.
 
 ### Fresh Claude Installation
 
@@ -49,13 +58,14 @@ If you're setting up Claude Code from scratch:
 
 1. **Create the global config directories:**
    ```bash
-   mkdir -p ~/.claude ~/.claude/user
+   mkdir -p ~/.claude/user ~/.claude/projects
    ```
 
 2. **Copy the config files:**
    ```bash
    cp /path/to/memory-mode-portable/MEMORY.md ~/.claude/MEMORY.md
    cp /path/to/memory-mode-portable/USER.md ~/.claude/USER.md
+   cp /path/to/memory-mode-portable/workspace.md.example ~/.claude/workspace.md
    ```
 
 3. **Set up CLAUDE.md:**
@@ -70,7 +80,7 @@ If you're setting up Claude Code from scratch:
 ### Sharing With a Friend
 
 Send them:
-1. This `memory-mode-portable/` folder (includes `MEMORY.md`, `USER.md`, and this `README.md`)
+1. This `memory-mode-portable/` folder (includes `MEMORY.md`, `USER.md`, `workspace.md.example`, and this `README.md`)
 2. Tell them to follow the "Fresh Claude Installation" steps above
 
 ## Usage
@@ -86,8 +96,9 @@ Start infinite memory mode
 ```
 
 Claude will:
-- Create `.claude/memory/` in your project directory
+- Create `~/.claude/projects/{project-key}/` for centralized storage
 - Initialize session tracking
+- Register the project in `~/.claude/workspace.md`
 - Begin autonomous memory management
 
 ### Stopping Memory Mode
@@ -104,6 +115,13 @@ Files are preserved. You can restart anytime.
 
 Shows active/inactive state, file counts, and session info.
 
+### Viewing Workspace
+```
+/workspace
+```
+
+Shows all registered projects, their relationships, and current initiatives.
+
 ### Rebuilding Index (Recovery)
 ```
 /memory rebuild
@@ -113,24 +131,52 @@ If the index gets out of sync, this regenerates it from actual files.
 
 ## How It Works
 
-### Data Storage
-Each project gets its own memory directory:
+### Centralized Storage (v1.3.0+)
+
+All memory is stored centrally under `~/.claude/`:
 ```
-your-project/
-└── .claude/
-    └── memory/
-        ├── _index.md           # Quick lookup index
-        ├── _index-archive.md   # Archived old entries
-        ├── _session.json       # Session state
-        ├── decisions/          # Major decisions made
-        ├── analysis/           # File/component analyses
-        ├── context/            # Current task & blockers
-        ├── progress/           # Work tracking
-        ├── subagent/           # Sub-agent outputs (v1.1.0+)
-        └── user/               # Project-specific user context (v1.2.0+)
+~/.claude/
+├── CLAUDE.md                       # Entry point (references @MEMORY.md, @USER.md)
+├── MEMORY.md                       # Memory mode instructions
+├── USER.md                         # User preference instructions
+├── workspace.md                    # Cross-project map (v1.3.0+)
+├── user/                           # Global user profile
+│   ├── profile.md
+│   ├── preferences.md
+│   ├── communication.md
+│   ├── technical.md
+│   ├── observations.md
+│   └── feedback.md
+└── projects/                       # All project memories (v1.3.0+)
+    └── {project-key}/              # One directory per project
+        ├── _index.md               # Quick lookup index
+        ├── _index-archive.md       # Archived old entries
+        ├── _session.json           # Session state
+        ├── decisions/              # Major decisions made
+        ├── analysis/               # File/component analyses
+        ├── context/                # Current task & blockers
+        ├── progress/               # Work tracking
+        ├── subagent/               # Sub-agent outputs
+        └── project.md              # Project-specific context
 ```
 
-### Global User Profile (v1.2.0+)
+### Why Centralized?
+
+- **No permission prompts**: Claude always has access to `~/.claude/`
+- **Seamless project switching**: Context available for any project instantly
+- **Cross-project awareness**: Easy to reference related projects
+- **Clean project directories**: No `.claude/` folders in your repos
+
+### Project Key Derivation
+
+The project key comes from your directory name:
+- `~/workspace/my_cool_app` → `my-cool-app`
+- `~/projects/AuthService` → `authservice`
+
+Algorithm: directory name → lowercase → underscores to hyphens
+
+### Global User Profile
+
 Your preferences follow you across all projects:
 ```
 ~/.claude/user/
@@ -140,6 +186,16 @@ Your preferences follow you across all projects:
 ├── technical.md        # Skills & interests
 ├── observations.md     # Patterns noticed (transparent)
 └── feedback.md         # What works/doesn't work
+```
+
+### Workspace Map (v1.3.0+)
+
+Track relationships between projects:
+```
+~/.claude/workspace.md
+├── Repository Registry     # All known projects
+├── Repository Relationships # How projects relate
+└── Current Initiatives     # Cross-project work in progress
 ```
 
 ### Compaction Detection
@@ -173,8 +229,8 @@ User: "Analyze the security of our auth module using sub-agents"
 Claude (parent):
 1. Reads _index.md for context
 2. Spawns sub-agent with memory instructions:
-   "Analyze src/auth/. MEMORY: Read .claude/memory/_index.md for context.
-    Write output to .claude/memory/subagent/2026-01-20_143000_auth-security.md"
+   "Analyze src/auth/. MEMORY: Read ~/.claude/projects/my-app/_index.md for context.
+    Write output to ~/.claude/projects/my-app/subagent/2026-01-20_143000_auth-security.md"
 3. Sub-agent reads context, performs analysis, writes findings
 4. Claude consolidates findings into _index.md
 ```
@@ -224,40 +280,48 @@ And references preferences when using them:
 - Observations require your confirmation before storing
 - Export/import for portability between machines
 
-## Gitignore Integration (v1.2.0+)
+## Cross-Project Operations (v1.3.0+)
 
-On `/memory start`, Claude will ask if you want to add `.claude/memory/` to your `.gitignore` to prevent accidentally committing session context.
+### Accessing Related Projects
 
-Options:
-- **Yes**: Add to this project
-- **No**: Skip for now
-- **Always**: Remember preference, auto-add for all projects
-- **Never ask again**: Remember preference, never prompt
+When working on a project that relates to others:
+1. Check `~/.claude/workspace.md` for relationships
+2. Read related project's `_index.md` for context
+3. Reference specific decisions or analyses as needed
 
-## File Structure Reference
+### Cross-Project Initiatives
 
-```
-~/.claude/                          # Global config (shared across projects)
-├── CLAUDE.md                       # References @MEMORY.md and @USER.md
-├── MEMORY.md                       # Memory mode instructions
-├── USER.md                         # User preference instructions (v1.2.0+)
-└── user/                           # Global user profile (v1.2.0+)
-    ├── profile.md
-    ├── preferences.md
-    ├── communication.md
-    ├── technical.md
-    ├── observations.md
-    └── feedback.md
+For work spanning multiple repos (releases, upgrades):
+1. Track in `~/.claude/workspace.md` under Current Initiatives
+2. Reference from individual project memories
+3. Update initiative status as work progresses
 
-~/any-project/.claude/memory/       # Per-project data (auto-created)
-├── _index.md
-├── _session.json
-├── decisions/
-├── analysis/
-├── context/
-├── progress/
-├── subagent/                       # Sub-agent outputs
-└── user/                           # Project-specific user context
+### Example workspace.md
+
+```markdown
+# Workspace
+
+## Repository Registry
+
+| Repo Key | Path | Description | Status |
+|----------|------|-------------|--------|
+| my-app | `~/workspace/my-app` | Main application | Active |
+| my-app-api | `~/workspace/my-app-api` | Backend API | Active |
+| shared-utils | `~/workspace/shared-utils` | Shared utilities | Active |
+
+## Repository Relationships
+
+### my-app
+- **Type**: Frontend Application
+- **Framework**: React
+- **Dependencies**: my-app-api, shared-utils
+
+## Current Initiatives
+
+### v2.0 Release
+- **Status**: In Progress
+- **Repos Involved**: my-app, my-app-api
+- **Next Steps**: Complete API migration, then frontend updates
 ```
 
 ## Troubleshooting
@@ -273,7 +337,7 @@ Options:
 
 ### Want to start fresh in a project
 ```bash
-rm -rf your-project/.claude/memory/
+rm -rf ~/.claude/projects/{project-key}/
 ```
 Then `/memory start` again.
 
@@ -293,7 +357,51 @@ This regenerates the index from actual files.
 - Check `subagent/` directory directly for raw outputs
 - Use `/memory rebuild` to force index regeneration
 
+### Claude not recognizing me in new sessions
+- Check that `~/.claude/CLAUDE.md` has the SESSION START PROTOCOL
+- Verify `~/.claude/user/profile.md` exists
+- Make sure `@USER.md` is referenced in your CLAUDE.md
+
+### Workspace not showing my projects
+- Projects are registered when you run `/memory start` in them
+- You can manually edit `~/.claude/workspace.md` to add projects
+- Run `/workspace` to see current registry
+
+## Migration from v1.2.x
+
+If you have existing `.claude/memory/` directories in projects:
+
+1. **Create project key from directory name**
+   ```bash
+   # Example: ~/workspace/my_app → my-app
+   ```
+
+2. **Move contents to centralized location**
+   ```bash
+   mkdir -p ~/.claude/projects/my-app
+   mv ~/workspace/my_app/.claude/memory/* ~/.claude/projects/my-app/
+   ```
+
+3. **Update _session.json** with new `projectKey` and `projectPath` fields
+
+4. **Register in workspace.md**
+   Add the project to `~/.claude/workspace.md` Repository Registry
+
+5. **Clean up old directory** (optional)
+   ```bash
+   rm -rf ~/workspace/my_app/.claude/
+   ```
+
 ## Version History
+
+### v1.3.0 - Centralized Architecture
+- **Breaking**: All project memory now stored at `~/.claude/projects/{project-key}/`
+- New `~/.claude/workspace.md` for cross-project context
+- New `/workspace` command to view project relationships
+- New `project.md` file for project-specific context
+- Removed gitignore integration (no longer needed - memory isn't in project dirs)
+- Seamless cross-project access without permission prompts
+- Updated CLAUDE.md.example to include workspace.md in session protocol
 
 ### v1.2.1 - Auto-Recognition
 - New `CLAUDE.md.example` with SESSION START PROTOCOL
@@ -307,9 +415,7 @@ This regenerates the index from actual files.
 - `/user` commands for profile management
 - Three-way learning protocol (explicit, observed, feedback)
 - Transparency markers for stored observations
-- Gitignore integration on `/memory start`
 - Export/import for profile portability
-- New `user/` subdirectory in project memory
 
 ### v1.1.0 - Sub-Agent Integration
 - New `subagent/` directory for sub-agent outputs

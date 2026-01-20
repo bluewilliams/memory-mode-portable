@@ -1,0 +1,47 @@
+# Workspace
+
+Central map of repositories, their relationships, and cross-repo initiatives.
+
+**Last Updated**: YYYY-MM-DDTHH:MM:SSZ
+
+## Repository Registry
+
+| Repo Key | Path | Description | Status |
+|----------|------|-------------|--------|
+| example-app | `~/workspace/example-app` | Example application | Active |
+
+<!-- Add repos as they're discovered or mentioned:
+| repo-key | `~/path/to/repo` | Description | Active/Archived |
+-->
+
+## Repository Relationships
+
+### example-app
+- **Type**: Application
+- **Framework**: [Your framework]
+- **Dependencies**: [Related repos]
+
+### Forked Repositories
+<!-- Document forked repos and their upstream relationships -->
+| Fork | Upstream | Purpose | Reconciliation Status |
+|------|----------|---------|----------------------|
+
+## Current Initiatives
+
+### [Initiative Name]
+- **Status**: [In Progress/Pending/Complete]
+- **Repos Involved**: [list]
+- **Next Steps**: [description]
+
+## Quick Reference
+
+### Project Memory Locations
+All project memories stored at `~/.claude/projects/{repo-key}/`
+
+### Common Operations
+- Start memory for a project: `/memory start`
+- Check workspace context: `/workspace`
+- Add new repo: Add to Registry table above
+
+## Notes
+<!-- Freeform notes about the workspace -->
