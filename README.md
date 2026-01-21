@@ -5,6 +5,7 @@ Autonomous context persistence system that allows Claude to maintain perfect mem
 ## What This Does
 
 When enabled, Claude will:
+- **Auto-activate for known projects** - no `/memory start` needed after first use (v1.4.0+)
 - Automatically detect when context compaction occurs
 - Persist important decisions, analyses, and context to files
 - Recover seamlessly when context is lost
@@ -13,6 +14,7 @@ When enabled, Claude will:
 - **Remember your preferences across all projects** (v1.2.0+)
 - **Recognize you automatically in every new session** (v1.2.1+)
 - **Track cross-project relationships and initiatives** (v1.3.0+)
+- **Track branch switches automatically** (v1.3.1+)
 
 **From your perspective**: Work normally. Claude never forgets - and always knows who you are.
 
@@ -393,6 +395,18 @@ If you have existing `.claude/memory/` directories in projects:
    ```
 
 ## Version History
+
+### v1.4.0 - Auto-Activation
+- Memory automatically activates for known projects (no `/memory start` needed after first use)
+- Checks for existing `~/.claude/projects/{project-key}/_session.json` on session start
+- Silently resumes memory mode for recognized projects
+- Still use `/memory start` to initialize new projects
+- `/memory stop` to opt-out for a session
+
+### v1.3.1 - Branch Tracking
+- Check current git branch before memory writes
+- Update `_session.json` branch if changed
+- Supports users who switch branches frequently
 
 ### v1.3.0 - Centralized Architecture
 - **Breaking**: All project memory now stored at `~/.claude/projects/{project-key}/`
