@@ -2,7 +2,7 @@
 
 Autonomous context persistence system for Claude Code. Maintains context across long sessions by persisting decisions, analyses, and context to files, enabling seamless continuation even after context compaction.
 
-**Version**: 1.3.0 - Centralized Architecture
+**Version**: 1.3.1 - Branch Tracking
 
 ## Overview
 
@@ -153,10 +153,14 @@ Write to memory when you:
 - Complete or start major tasks
 
 ### How to Write
-1. Create file in appropriate directory with ISO timestamp in filename
-2. Update `_index.md` (add row to Recent Files table)
-3. If index > 20 entries, archive oldest to `_index-archive.md`
-4. Update `_session.json` lastActivity timestamp and stats
+1. **Check current branch** (user may switch branches frequently):
+   - Run `git branch --show-current` to get current branch
+   - If different from `_session.json` branch, update it
+   - Include branch in memory file metadata when relevant
+2. Create file in appropriate directory with ISO timestamp in filename
+3. Update `_index.md` (add row to Recent Files table)
+4. If index > 20 entries, archive oldest to `_index-archive.md`
+5. Update `_session.json` lastActivity timestamp, stats, and branch if changed
 
 ### File Naming Conventions
 - Decisions: `decisions/YYYY-MM-DD_NNN_short-description.md`
