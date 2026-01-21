@@ -2,11 +2,12 @@
 
 Autonomous context persistence system for Claude Code. Maintains context across long sessions by persisting decisions, analyses, and context to files, enabling seamless continuation even after context compaction.
 
-**Version**: 1.3.1 - Branch Tracking
+**Version**: 1.4.0 - Auto-Activation
 
 ## Overview
 
 **Purpose**: Allow Claude to maintain perfect memory across arbitrarily long sessions by:
+- **Auto-activating for known projects** - no command needed once initialized
 - Detecting when context compaction occurs (via breadcrumb system)
 - Persisting important information to centralized project files
 - Automatically recovering context when needed
@@ -58,10 +59,38 @@ The project key is derived from the working directory:
 - Current cross-repo initiatives (releases, upgrades)
 - Quick reference for navigating projects
 
+## Auto-Activation (v1.4.0+)
+
+Memory mode automatically activates for known projects. No command needed for projects you've used before.
+
+### How It Works
+
+On every session start:
+1. Derive project key from current working directory (e.g., `korweb_companion_app` → `korweb-companion-app`)
+2. Check if `~/.claude/projects/{project-key}/_session.json` exists
+3. **If exists**: Auto-activate memory mode
+   - Set `active: true` in `_session.json`
+   - Update `lastActivity` timestamp
+   - Check and update branch if changed
+   - Read `_index.md` for context
+   - Silently resume - no announcement needed unless recovering from compaction
+4. **If not exists**: Normal mode - user can run `/memory start` to initialize
+
+### Benefits
+- Once you've used `/memory start` on a project, it's always on
+- No need to remember to activate memory each session
+- Seamless continuity across terminal sessions
+- Branch switches are tracked automatically
+
+### Opting Out
+If you want to disable auto-activation for a session:
+- Run `/memory stop` to deactivate
+- Memory will re-activate next session unless you delete the project from `~/.claude/projects/`
+
 ## Session Commands
 
 ### `/memory start`
-Initializes memory mode for the current project.
+Initializes memory mode for a **new** project (or re-initializes existing).
 
 **Actions**:
 1. Derive project key from current working directory
