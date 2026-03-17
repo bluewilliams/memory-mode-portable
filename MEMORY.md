@@ -2,7 +2,7 @@
 
 Autonomous context persistence system for Claude Code. Maintains context across long sessions by persisting decisions, analyses, and context to files, enabling seamless continuation even after context compaction.
 
-**Version**: 1.5.0 - User-Level Installation
+**Version**: 1.5.1
 
 ## Overview
 
@@ -48,9 +48,11 @@ Autonomous context persistence system for Claude Code. Maintains context across 
 
 ### Project Key Derivation
 The project key is derived from the working directory:
-- `~/workspace/korweb_companion_app` → `korweb-companion-app`
+- `~/workspace/my_web_app` → `my-web-app`
 - `~/projects/my-cool-app` → `my-cool-app`
 - Algorithm: Take directory name, lowercase, replace underscores with hyphens
+
+**Important**: The key uses only the directory basename. If you have identically named directories in different paths (e.g., `~/work/api` and `~/personal/api`), they will share the same project key (`api`) and memory. Rename one directory to avoid collisions, or check `/memory status` after starting to confirm the resolved path.
 
 ### Workspace Map
 `~/.claude/workspace.md` contains:
@@ -59,6 +61,8 @@ The project key is derived from the working directory:
 - Current cross-repo initiatives (releases, upgrades)
 - Quick reference for navigating projects
 
+**Size guideline**: Keep workspace.md under 100 lines. It is read on every session start and consumes context budget. Store detailed project notes in each project's `project.md` instead. Archive completed initiatives periodically.
+
 ## Auto-Activation (v1.4.0+)
 
 Memory mode automatically activates for known projects. No command needed for projects you've used before.
@@ -66,14 +70,16 @@ Memory mode automatically activates for known projects. No command needed for pr
 ### How It Works
 
 On every session start:
-1. Derive project key from current working directory (e.g., `korweb_companion_app` → `korweb-companion-app`)
+1. Derive project key from current working directory (e.g., `my_web_app` → `my-web-app`)
 2. Check if `~/.claude/projects/{project-key}/_session.json` exists
-3. **If exists**: Auto-activate memory mode
-   - Set `active: true` in `_session.json`
-   - Update `lastActivity` timestamp
-   - Check and update branch if changed
-   - Read `_index.md` for context
-   - Silently resume - no announcement needed unless recovering from compaction
+3. **If exists**: Check `autoActivate` field in `_session.json`
+   - If `autoActivate` is `false` → Skip activation, normal mode
+   - Otherwise → Auto-activate memory mode:
+     - Set `active: true` in `_session.json`
+     - Update `lastActivity` timestamp
+     - Check and update branch if changed
+     - Read `_index.md` for context
+     - Silently resume - no announcement needed unless recovering from compaction
 4. **If not exists**: Normal mode - user can run `/memory start` to initialize
 
 ### Benefits
@@ -83,9 +89,8 @@ On every session start:
 - Branch switches are tracked automatically
 
 ### Opting Out
-If you want to disable auto-activation for a session:
-- Run `/memory stop` to deactivate
-- Memory will re-activate next session unless you delete the project from `~/.claude/projects/`
+- **One session**: Run `/memory stop` — memory re-activates next session
+- **Permanently**: Run `/memory disable` — sets `autoActivate: false` in `_session.json`, preserves all files. Run `/memory start` to re-enable later
 
 ## Session Commands
 
@@ -99,6 +104,7 @@ Initializes memory mode for a **new** project (or re-initializes existing).
    ```json
    {
      "active": true,
+     "autoActivate": true,
      "started": "YYYY-MM-DDTHH:MM:SSZ",
      "projectKey": "{project-key}",
      "projectPath": "{full-path-to-project}",
@@ -121,6 +127,15 @@ Deactivates memory mode (preserves all files).
 2. Update `_session.json` with `"active": false`
 3. Update `_index.md` status to INACTIVE
 4. Confirm: "Memory mode stopped. Files preserved at ~/.claude/projects/{project-key}/"
+
+### `/memory disable`
+Permanently disables auto-activation for this project (preserves all files).
+
+**Actions**:
+1. Set `autoActivate: false` in `_session.json`
+2. Set `active: false` in `_session.json`
+3. Update `_index.md` status to DISABLED
+4. Confirm: "Memory auto-activation disabled for {project-key}. Files preserved. Use `/memory start` to re-enable."
 
 ### `/memory status`
 Reports current memory mode state.
@@ -196,7 +211,7 @@ Write to memory when you:
 - Analysis: `analysis/path_to_file.md` (slashes → underscores)
 - Context: `context/current-task.md`, `context/blockers.md`
 - Progress: `progress/active.md`, `progress/completed.md`
-- Sub-agent: `subagent/YYYY-MM-DD_HHMMSS_taskname.md`
+- Sub-agent: `subagent/YYYY-MM-DD_HHMMSS_taskname_XXXX.md` (XXXX = random hex)
 
 ## Reading Memory
 
@@ -241,7 +256,7 @@ MEMORY SYSTEM INSTRUCTIONS:
 This project uses centralized memory at ~/.claude/projects/{project-key}/
 
 1. CONTEXT: Read ~/.claude/projects/{project-key}/_index.md first for project context
-2. OUTPUT: Write findings to ~/.claude/projects/{project-key}/subagent/YYYY-MM-DD_HHMMSS_[task-name].md
+2. OUTPUT: Write findings to ~/.claude/projects/{project-key}/subagent/YYYY-MM-DD_HHMMSS_[task-name]_[4-hex-chars].md
 3. FORMAT: Use the Sub-Agent Output format (see below)
 4. RESTRICTION: Do NOT modify _index.md - the parent agent will update it
 
@@ -273,7 +288,8 @@ When a sub-agent returns:
 ### Parallel Sub-Agents
 
 When running multiple sub-agents in parallel:
-- Each sub-agent gets a unique timestamp-based filename (HHMMSS ensures uniqueness)
+- Each sub-agent gets a unique filename using timestamp + task name + short random suffix
+- Format: `YYYY-MM-DD_HHMMSS_taskname_XXXX.md` (XXXX = 4 random hex chars for disambiguation)
 - Sub-agents cannot conflict since they write to different files
 - Parent waits for all to complete before consolidating
 - Consolidation happens sequentially to prevent index conflicts
@@ -282,14 +298,14 @@ When running multiple sub-agents in parallel:
 
 Minimal version for simple sub-agent tasks:
 ```
-MEMORY: Read ~/.claude/projects/{project-key}/_index.md for context. Write output to ~/.claude/projects/{project-key}/subagent/[timestamp]_[task].md
+MEMORY: Read ~/.claude/projects/{project-key}/_index.md for context. Write output to ~/.claude/projects/{project-key}/subagent/[timestamp]_[task]_[4-hex].md
 ```
 
 Full version for complex sub-agent tasks:
 ```
 MEMORY SYSTEM:
 - Read: ~/.claude/projects/{project-key}/_index.md (context), decisions/ (past decisions)
-- Write: ~/.claude/projects/{project-key}/subagent/YYYY-MM-DD_HHMMSS_[task].md
+- Write: ~/.claude/projects/{project-key}/subagent/YYYY-MM-DD_HHMMSS_[task]_[4-hex].md
 - Format: # Title, **Agent**: type, **Date**: ISO, ## Summary, ## Details, ## Recommendations
 - Do NOT modify _index.md
 ```

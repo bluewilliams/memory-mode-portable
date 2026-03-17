@@ -72,7 +72,7 @@ git pull
 ./install.sh
 ```
 
-The installer preserves your existing `CLAUDE.md`, `workspace.md`, profile, and preferences.
+The installer preserves your existing `CLAUDE.md`, `workspace.md`, profile, and preferences. Note: `MEMORY.md` and `USER.md` are always overwritten with the latest version — these are system instruction files managed by the installer.
 
 ### Sharing With Others
 
@@ -125,6 +125,8 @@ Your directory name becomes the project key:
 
 Algorithm: directory name → lowercase → underscores to hyphens
 
+**Note**: Only the directory basename is used. If you have identically named directories in different paths (e.g., `~/work/api` and `~/personal/api`), they will share memory. Rename one to avoid collisions.
+
 ## Usage
 
 ### First Time in a Project
@@ -145,6 +147,7 @@ Memory auto-activates. Just start working.
 |---------|-------------|
 | `/memory start` | Initialize memory for a new project |
 | `/memory stop` | Deactivate for this session (re-activates next session) |
+| `/memory disable` | Permanently disable auto-activation (preserves files) |
 | `/memory status` | Show current memory state |
 | `/memory rebuild` | Regenerate index from files (recovery) |
 | `/workspace` | Show all projects and relationships |
@@ -195,7 +198,9 @@ Claude can reference any project's memory when context is relevant — all under
 |---------|----------|
 | Memory not activating | Check `@MEMORY.md` is in `~/.claude/CLAUDE.md` |
 | Lost context after long session | Normal — Claude recovers automatically. Try `/memory rebuild` if issues persist |
+| Disable memory for a project | `/memory disable` (preserves files, stops auto-activation) |
 | Start fresh in a project | `rm -rf ~/.claude/projects/{project-key}/` then `/memory start` |
+| Two projects sharing memory | Same directory name in different paths — rename one directory |
 | Index seems wrong | `/memory rebuild` |
 | Sub-agents not using memory | Ensure memory is active (`/memory status`) |
 | Claude not recognizing you | Check SESSION START PROTOCOL in `~/.claude/CLAUDE.md` and that `~/.claude/user/profile.md` exists |
@@ -221,6 +226,17 @@ rm -rf ~/workspace/my_app/.claude/
 ```
 
 ## Version History
+
+### v1.5.1 - Review Fixes
+- Fixed install.sh heredoc bug: timestamps now expand correctly in generated profile files
+- Fixed install.sh only checking for `@MEMORY.md` — now checks for `@USER.md` too
+- Added `/memory disable` command for permanent opt-out without deleting files
+- Added `autoActivate` field to `_session.json` schema
+- Fixed sub-agent filename collision: added random hex suffix for parallel disambiguation
+- Added workspace.md size guideline (keep under 100 lines)
+- Documented project key collision risk (same directory name in different paths)
+- Aligned version numbers across MEMORY.md and USER.md
+- Removed private project name from examples
 
 ### v1.5.0 - User-Level Installation
 - Added `install.sh` for automated user-level setup

@@ -45,3 +45,5 @@ All project memories stored at `~/.claude/projects/{repo-key}/`
 
 ## Notes
 <!-- Freeform notes about the workspace -->
+<!-- SIZE GUIDELINE: Keep this file under 100 lines. It is read every session. -->
+<!-- Store detailed notes in each project's project.md instead. -->

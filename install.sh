@@ -6,6 +6,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_DIR="$HOME/.claude"
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 echo "=== Infinite Memory Mode Installer ==="
 echo ""
@@ -18,10 +19,12 @@ echo "Creating directories..."
 mkdir -p "$CLAUDE_DIR/user"
 mkdir -p "$CLAUDE_DIR/projects"
 
-# Copy core instruction files
-echo "Installing core files..."
+# Copy core instruction files (always overwrite — these are the system instructions)
+echo "Installing core instruction files..."
 cp "$SCRIPT_DIR/MEMORY.md" "$CLAUDE_DIR/MEMORY.md"
 cp "$SCRIPT_DIR/USER.md" "$CLAUDE_DIR/USER.md"
+echo "  MEMORY.md and USER.md updated."
+echo "  NOTE: These files are managed by the installer. Local edits will be overwritten on update."
 
 # Set up workspace.md if it doesn't exist
 if [ ! -f "$CLAUDE_DIR/workspace.md" ]; then
@@ -37,36 +40,42 @@ if [ ! -f "$CLAUDE_DIR/CLAUDE.md" ]; then
     cp "$SCRIPT_DIR/CLAUDE.md.example" "$CLAUDE_DIR/CLAUDE.md"
     echo "NOTE: Review ~/.claude/CLAUDE.md and customize as needed."
 else
-    # Check if CLAUDE.md already references MEMORY.md
-    if grep -q "@MEMORY.md" "$CLAUDE_DIR/CLAUDE.md" 2>/dev/null; then
-        echo "CLAUDE.md already references @MEMORY.md, skipping."
-    else
+    # Check if CLAUDE.md references both MEMORY.md and USER.md
+    MISSING_REFS=""
+    if ! grep -q "@MEMORY.md" "$CLAUDE_DIR/CLAUDE.md" 2>/dev/null; then
+        MISSING_REFS="@MEMORY.md"
+    fi
+    if ! grep -q "@USER.md" "$CLAUDE_DIR/CLAUDE.md" 2>/dev/null; then
+        MISSING_REFS="$MISSING_REFS @USER.md"
+    fi
+
+    if [ -n "$MISSING_REFS" ]; then
         echo ""
-        echo "WARNING: ~/.claude/CLAUDE.md exists but doesn't reference @MEMORY.md"
-        echo "Add these lines to your ~/.claude/CLAUDE.md:"
-        echo ""
-        echo "  @MEMORY.md"
-        echo "  @USER.md"
+        echo "WARNING: ~/.claude/CLAUDE.md is missing references:$MISSING_REFS"
+        echo "These are needed for memory mode to work."
         echo ""
         read -p "Would you like to append them now? (y/N) " -n 1 -r
         echo ""
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             echo "" >> "$CLAUDE_DIR/CLAUDE.md"
-            echo "@MEMORY.md" >> "$CLAUDE_DIR/CLAUDE.md"
-            echo "@USER.md" >> "$CLAUDE_DIR/CLAUDE.md"
-            echo "Added @MEMORY.md and @USER.md references."
+            for ref in $MISSING_REFS; do
+                echo "$ref" >> "$CLAUDE_DIR/CLAUDE.md"
+                echo "  Added $ref"
+            done
         fi
+    else
+        echo "CLAUDE.md already references @MEMORY.md and @USER.md, skipping."
     fi
 fi
 
 # Create default user profile if it doesn't exist
 if [ ! -f "$CLAUDE_DIR/user/profile.md" ]; then
     echo "Creating default user profile..."
-    cat > "$CLAUDE_DIR/user/profile.md" << 'EOF'
+    cat > "$CLAUDE_DIR/user/profile.md" << EOF
 # User Profile
 
-**Created**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-**Last Updated**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+**Created**: $TIMESTAMP
+**Last Updated**: $TIMESTAMP
 
 ## Identity
 - **Name**:
@@ -83,10 +92,10 @@ fi
 
 if [ ! -f "$CLAUDE_DIR/user/preferences.md" ]; then
     echo "Creating default preferences..."
-    cat > "$CLAUDE_DIR/user/preferences.md" << 'EOF'
+    cat > "$CLAUDE_DIR/user/preferences.md" << EOF
 # User Preferences
 
-**Last Updated**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+**Last Updated**: $TIMESTAMP
 
 ## Communication
 - **Detail Level**: balanced
@@ -117,10 +126,10 @@ echo "Installed to: $CLAUDE_DIR/"
 echo ""
 echo "Structure:"
 echo "  ~/.claude/CLAUDE.md      - Entry point (references @MEMORY.md, @USER.md)"
-echo "  ~/.claude/MEMORY.md      - Memory mode instructions"
-echo "  ~/.claude/USER.md        - User preference system"
-echo "  ~/.claude/workspace.md   - Cross-project map"
-echo "  ~/.claude/user/          - Your global profile"
+echo "  ~/.claude/MEMORY.md      - Memory mode instructions (managed by installer)"
+echo "  ~/.claude/USER.md        - User preference system (managed by installer)"
+echo "  ~/.claude/workspace.md   - Cross-project map (yours to edit)"
+echo "  ~/.claude/user/          - Your global profile (yours to edit)"
 echo "  ~/.claude/projects/      - Per-project memory (created on first use)"
 echo ""
 echo "Next steps:"
