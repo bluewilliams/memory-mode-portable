@@ -1,4 +1,7 @@
-# Claude Code Configuration
+# Claude Code Configuration (User Level)
+
+# This file lives at ~/.claude/CLAUDE.md and applies to ALL projects.
+# It is the entry point for Infinite Memory Mode.
 
 ## SESSION START PROTOCOL (MANDATORY)
 **IMMEDIATELY on every new session**, before responding to the user:

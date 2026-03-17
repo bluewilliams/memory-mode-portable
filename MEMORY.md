@@ -2,7 +2,7 @@
 
 Autonomous context persistence system for Claude Code. Maintains context across long sessions by persisting decisions, analyses, and context to files, enabling seamless continuation even after context compaction.
 
-**Version**: 1.4.0 - Auto-Activation
+**Version**: 1.5.0 - User-Level Installation
 
 ## Overview
 
