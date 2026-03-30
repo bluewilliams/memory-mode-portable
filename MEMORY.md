@@ -2,11 +2,12 @@
 
 Autonomous context persistence system for Claude Code. Maintains context across long sessions by persisting decisions, analyses, and context to files, enabling seamless continuation even after context compaction.
 
-**Version**: 1.5.1
+**Version**: 1.6.0
 
 ## Overview
 
 **Purpose**: Allow Claude to maintain perfect memory across arbitrarily long sessions by:
+- **Auto-saving via hooks** - memory stays current without manual intervention (v1.6.0+)
 - **Auto-activating for known projects** - no command needed once initialized
 - Detecting when context compaction occurs (via breadcrumb system)
 - Persisting important information to centralized project files
@@ -187,6 +188,84 @@ At the START of every response:
 ### Why This Works
 The breadcrumb is a concrete, deterministic signal. If the previous response's breadcrumb is not visible in current context, compaction definitely occurred.
 
+## Auto-Save Hooks (v1.6.0+)
+
+Memory mode includes optional hooks that automatically track your work and nudge you to save state at the right moments. This prevents memory drift during deep work sessions.
+
+### How It Works
+
+Three hooks work together:
+
+1. **PostToolUse → `memory-tracker.sh`**: Silently counts file edits and git commits in a state file (`~/.claude/.memory-hooks/activity.json`). Runs after every Edit, Write, MultiEdit, or Bash call. Zero overhead — no output to Claude.
+
+2. **UserPromptSubmit → `memory-nudge.sh`**: Before each user prompt is processed, checks the accumulated activity. If significant work happened (any commit, or 10+ edits), injects a `<memory-checkpoint>` tag into Claude's context with specific instructions to save. Rate-limited to once per 5 minutes.
+
+3. **PreCompact → `memory-precompact.sh`**: Fires before context compaction. Injects a critical-priority checkpoint telling Claude to save all current state NOW — because context is about to be lost.
+
+### Responding to Checkpoint Nudges
+
+When you see a `<memory-checkpoint>` tag in context:
+- **`reason="post-commit"`**: A commit happened. Update `context/current-task.md` and `progress/active.md` to reflect what was committed and what's next.
+- **`reason="edit-threshold"`**: Many file edits accumulated. Save a brief checkpoint to `context/current-task.md` noting what you're working on.
+- **`reason="pre-compaction"` `priority="critical"`**: Context is about to be lost. Immediately save everything: current task, progress, any unsaved decisions or analysis. This is your last chance before compaction.
+
+### Installing Hooks
+
+Run from the memory-mode-portable directory:
+```bash
+./hooks/install-hooks.sh
+```
+
+This copies hook scripts to `~/.claude/hooks/` and prints the settings.json configuration to add. If you don't have an existing settings.json, it creates one.
+
+### Hook Configuration
+
+Add to `~/.claude/settings.json`:
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/memory-tracker.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/memory-nudge.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/memory-precompact.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Tuning
+
+You can adjust thresholds by editing the hook scripts in `~/.claude/hooks/`:
+- **Edit threshold**: Change `10` in `memory-nudge.sh` (line: `if [ "$EDITS" -ge 10 ]`)
+- **Nudge cooldown**: Change `300` (seconds) in `memory-nudge.sh` (line: `if [ "$ELAPSED" -lt 300 ]`)
+- **Disable a hook**: Remove its entry from `settings.json`
+
 ## Writing Memory
 
 ### When to Write
@@ -195,6 +274,7 @@ Write to memory when you:
 - Complete analysis of a file or component
 - Identify blockers or important context
 - Complete or start major tasks
+- **Receive a `<memory-checkpoint>` nudge from hooks**
 
 ### How to Write
 1. **Check current branch** (user may switch branches frequently):

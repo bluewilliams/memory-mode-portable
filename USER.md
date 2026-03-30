@@ -2,7 +2,7 @@
 
 Persistent user preference tracking for Claude Code. Builds understanding of the user over time - communication style, technical background, preferences, and working patterns.
 
-**Version**: 1.5.1
+**Version**: 1.6.0
 **Key Principle**: Two-tier storage - global profile (follows user across projects) + project-specific context, all centralized under `~/.claude/`.
 
 ## Architecture

@@ -13,6 +13,7 @@ Once installed at the user level (`~/.claude/`), Claude will — in **every proj
 - **Track cross-project relationships** — understand how your repos relate
 - **Coordinate memory across sub-agents** — parallel agents share context
 - **Track branch switches automatically** — stay oriented when you move fast
+- **Auto-save via hooks** — memory stays current without manual writes (v1.6.0+)
 
 **From your perspective**: Install once, work normally. Claude never forgets.
 
@@ -77,6 +78,17 @@ The installer preserves your existing `CLAUDE.md`, `workspace.md`, profile, and 
 ### Sharing With Others
 
 Send them this repo. They run `./install.sh`. Done.
+
+### Installing Hooks (Optional, Recommended)
+
+After the base install, add auto-save hooks:
+
+```bash
+cd memory-mode-portable
+./hooks/install-hooks.sh
+```
+
+This installs three hooks into `~/.claude/hooks/` and prints the settings.json configuration to add. The hooks automatically track your edits and commits, then nudge Claude to save memory state when significant work has accumulated. See [Auto-Save Hooks](#auto-save-hooks) for details.
 
 ## How It Works
 
@@ -169,6 +181,32 @@ When Claude spawns sub-agents (via Task tool), they automatically:
 - Avoid conflicts when running in parallel
 - Get consolidated by the parent agent into the main index
 
+## Auto-Save Hooks
+
+The biggest risk with memory mode is "memory drift" — getting deep into work and forgetting to update memory files. Auto-save hooks solve this by tracking your activity and nudging Claude at the right moments.
+
+### Three Hooks
+
+| Hook | Event | What it does |
+|------|-------|-------------|
+| `memory-tracker.sh` | PostToolUse | Silently counts edits and commits to a state file |
+| `memory-nudge.sh` | UserPromptSubmit | Checks activity, injects checkpoint nudge if needed |
+| `memory-precompact.sh` | PreCompact | Critical reminder to save before context is lost |
+
+### When Nudges Fire
+
+- **After any git commit** — Claude is told to update task and progress files
+- **After 10+ file edits** — Claude is reminded to checkpoint current state
+- **Before context compaction** — Critical priority: save everything NOW
+- **Rate-limited** to once per 5 minutes to avoid being annoying
+
+### Tuning
+
+Edit the scripts in `~/.claude/hooks/` to adjust:
+- Edit threshold (default: 10 edits)
+- Nudge cooldown (default: 5 minutes)
+- Or remove a hook entry from `settings.json` to disable it
+
 ## User Preferences
 
 Claude learns how you work through three channels:
@@ -226,6 +264,15 @@ rm -rf ~/workspace/my_app/.claude/
 ```
 
 ## Version History
+
+### v1.6.0 - Auto-Save Hooks
+- New hook system that tracks edits/commits and nudges Claude to save memory
+- `memory-tracker.sh` (PostToolUse): silently tracks file changes and commits
+- `memory-nudge.sh` (UserPromptSubmit): injects checkpoint reminders into context
+- `memory-precompact.sh` (PreCompact): critical save reminder before compaction
+- `hooks/install-hooks.sh` for automated hook installation
+- Updated MEMORY.md with auto-save protocol and hook response instructions
+- Rate-limited nudges (5-minute cooldown) to avoid noise
 
 ### v1.5.1 - Review Fixes
 - Fixed install.sh heredoc bug: timestamps now expand correctly in generated profile files
