@@ -685,12 +685,38 @@ Stub: {one-line summary of what this decision was about, to be expanded later}
 type: decision|analysis|session|progress|resource|subagent|project
 project: "[[Claude/Projects/{project-name}]]"
 date: YYYY-MM-DD
-status: active|completed|decided|pending|superseded
+status: active|completed|decided|pending|superseded|stub
+tickets: []
 tags:
   - {type-tag}
   - {domain-tags}
 ---
 ```
+
+### Jira / Ticket Integration
+
+Projects are repos, not tickets. Jira tickets are work items within a project.
+
+**How to reference tickets**:
+1. Add ticket IDs to the `tickets` frontmatter array: `tickets: [KA-6135, KA-6140]`
+2. Wikilink to the user's existing Jira notes in the body: `[[Jira/KA-6135]]`
+3. Never create a separate project note for a Jira ticket
+
+**Example**:
+```yaml
+---
+type: decision
+project: "[[Claude/Projects/korweb-companion-app]]"
+tickets: [KA-6135]
+---
+# Offline tile caching strategy
+Decided during work on [[Jira/KA-6135]]...
+```
+
+This way:
+- The `tickets` field is Dataview-queryable: find all notes related to a ticket
+- The wikilink creates a graph connection to the user's Jira notes
+- The project note remains the hub, tickets are just references within it
 
 ### Tag Taxonomy
 
@@ -707,7 +733,9 @@ tags:
 - Link to analyses: `[[Claude/Analysis/Component name]]`
 - Link to resources: `[[Claude/Resources/References/Resource title]]`
 - Link to sessions: `[[Claude/Sessions/YYYY-MM-DD project-name]]`
-- Link to user's own notes (outside Claude/): `[[Jira/TICKET-123]]`, `[[Daily Note/YYYY-MM-DD]]`
+- Link to user's Jira notes: `[[Jira/KA-6135]]` (uses their existing Jira folder)
+- Link to user's daily notes: `[[Daily Note/YYYY-MM-DD]]`
+- Link to user's other notes: Use whatever path exists in their vault
 
 Every note must link back to its project. Orphan notes (no links) are failures.
 
