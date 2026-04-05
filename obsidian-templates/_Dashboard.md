@@ -8,7 +8,7 @@ aliases:
   - Dashboard
 ---
 
-# Claude Mind --- Dashboard
+# Claude Mind - Dashboard
 
 > AI-powered knowledge base. Browse, search, and discover.
 
@@ -29,6 +29,20 @@ SORT date DESC
 
 ---
 
+## Active Sessions
+
+```dataview
+TABLE WITHOUT ID
+  file.link AS "Session",
+  project AS "Project",
+  branch AS "Branch"
+FROM #session
+WHERE status = "active" AND !contains(file.path, "_Templates")
+SORT date DESC
+```
+
+---
+
 ## Active Projects
 
 ```dataview
@@ -43,16 +57,17 @@ SORT file.name ASC
 
 ---
 
-## Active Sessions
+## Recently Changed
 
 ```dataview
 TABLE WITHOUT ID
-  file.link AS "Session",
-  project AS "Project",
-  branch AS "Branch"
-FROM #session
-WHERE status = "active" AND !contains(file.path, "_Templates")
-SORT date DESC
+  file.link AS "Note",
+  type AS "Type",
+  project AS "Project"
+FROM ""
+WHERE type AND !contains(file.path, "_Templates") AND !contains(file.path, ".claude-state")
+SORT file.mtime DESC
+LIMIT 10
 ```
 
 ---
@@ -118,6 +133,20 @@ LIMIT 10
 
 ---
 
+## This Week's Activity
+
+```dataview
+TABLE WITHOUT ID
+  type AS "Type",
+  count(rows) AS "Count"
+FROM ""
+WHERE type AND !contains(file.path, "_Templates") AND !contains(file.path, ".claude-state") AND file.mtime >= date(today) - dur(7 days)
+GROUP BY type
+SORT count(rows) DESC
+```
+
+---
+
 ## Sub-Agent Activity
 
 ```dataview
@@ -136,9 +165,8 @@ LIMIT 10
 
 ## Stats
 
-- **Total Projects**: `$= dv.pages('#project').where(p => !p.file.path.includes('_Templates')).length`
-- **Total Decisions**: `$= dv.pages('#decision').where(p => !p.file.path.includes('_Templates')).length`
-- **Total Analyses**: `$= dv.pages('#analysis').where(p => !p.file.path.includes('_Templates')).length`
-- **Total Resources**: `$= dv.pages('#resource').where(p => !p.file.path.includes('_Templates')).length`
-- **Total Sessions**: `$= dv.pages('#session').where(p => !p.file.path.includes('_Templates')).length`
-- **Total Brags**: `$= dv.pages('#brag').where(p => !p.file.path.includes('_Templates')).length`
+`$= "**" + dv.pages('#project').where(p => !p.file.path.includes('_Templates')).length + "** projects | **" + dv.pages('#decision').where(p => !p.file.path.includes('_Templates')).length + "** decisions | **" + dv.pages('#analysis').where(p => !p.file.path.includes('_Templates')).length + "** analyses | **" + dv.pages('#session').where(p => !p.file.path.includes('_Templates')).length + "** sessions | **" + dv.pages('#brag').where(p => !p.file.path.includes('_Templates')).length + "** brags | **" + dv.pages('#resource').where(p => !p.file.path.includes('_Templates')).length + "** resources"`
+
+---
+
+*Quick links: [[Claude/Workspace|Workspace]] | [[Claude/People/Blue Williams|Profile]] | [[Claude/People/_Preferences|Preferences]] | [[Claude/Brag/_Brag Dashboard|Brag Dashboard]] | [[Claude/Resources/_Resource Index|Resources]]*
