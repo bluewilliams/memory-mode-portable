@@ -651,6 +651,8 @@ Every note MUST have:
 3. **A descriptive H1 title** (human-readable, not coded)
 4. **Tags from the taxonomy** (see below)
 
+**Critical rule**: Never create a wikilink to a note that doesn't exist without writing that note immediately. Empty placeholder notes are worse than no note - they look like content in the graph and dashboard but deliver nothing when opened. If you reference `[[Claude/Decisions/some decision]]` in a session note, write the decision note right then.
+
 ### Note Locations
 
 | Note Type | Folder | Naming Pattern |
