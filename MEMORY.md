@@ -651,7 +651,21 @@ Every note MUST have:
 3. **A descriptive H1 title** (human-readable, not coded)
 4. **Tags from the taxonomy** (see below)
 
-**Critical rule**: Never create a wikilink to a note that doesn't exist without writing that note immediately. Empty placeholder notes are worse than no note - they look like content in the graph and dashboard but deliver nothing when opened. If you reference `[[Claude/Decisions/some decision]]` in a session note, write the decision note right then.
+**Write-through rule**: When you create a wikilink to a note that doesn't exist yet, either write the full note immediately OR create it with a `status: stub` frontmatter field and a one-line summary. Stub notes are valuable - they show up in the graph as signals that something needs to be filled in. An empty note with no frontmatter is the failure state. A stub with context is a todo.
+
+Stub format:
+```markdown
+---
+type: decision
+status: stub
+project: "[[Claude/Projects/{project}]]"
+date: YYYY-MM-DD
+tags:
+  - decision
+---
+# {Title}
+Stub: {one-line summary of what this decision was about, to be expanded later}
+```
 
 ### Note Locations
 
