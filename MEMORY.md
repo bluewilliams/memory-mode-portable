@@ -2,7 +2,7 @@
 
 Autonomous context persistence system for Claude Code. Maintains context across long sessions by persisting decisions, analyses, and context to files, enabling seamless continuation even after context compaction.
 
-**Version**: 1.6.0
+**Version**: 2.0.0
 
 ## Overview
 
@@ -611,3 +611,196 @@ If you have existing `.claude/memory/` directories in projects:
 3. Update `_session.json` with new `projectKey` and `projectPath` fields
 4. Register project in `~/.claude/workspace.md`
 5. Old `.claude/memory/` directories can be deleted after migration
+
+---
+
+## Obsidian Backend (v2.0+)
+
+Memory mode supports an optional Obsidian vault backend that transforms Claude's memory into a dual-purpose knowledge base — functional for Claude's context recovery AND browsable/searchable/graphable by the user in Obsidian.
+
+### Detecting the Backend
+
+On session start, read `~/.claude/memory-config.json`:
+
+```json
+{
+  "version": "2.0.0",
+  "backend": "obsidian",
+  "obsidian": {
+    "vaultPath": "~/Documents/KorTerra Vault/KorTerra",
+    "basePath": "Claude"
+  }
+}
+```
+
+- If `backend` = `"default"` → Use all v1.x behavior unchanged
+- If `backend` = `"obsidian"` → Use Obsidian mode (this section)
+- If file missing → Treat as `"default"`
+
+**Path resolution**:
+- `VAULT_ROOT` = `obsidian.vaultPath` (expand `~` to `$HOME`)
+- `CLAUDE_ROOT` = `VAULT_ROOT / obsidian.basePath` (e.g., `.../KorTerra/Claude`)
+- All note paths below are relative to `CLAUDE_ROOT`
+- Machine state lives at `CLAUDE_ROOT/.claude-state/`
+
+### Writing Obsidian Notes
+
+Every note MUST have:
+1. **YAML frontmatter** with `type`, `project`, `date`, and `tags` fields
+2. **At least one `[[wikilink]]`** to another note (minimum: the project note)
+3. **A descriptive H1 title** (human-readable, not coded)
+4. **Tags from the taxonomy** (see below)
+
+### Note Locations
+
+| Note Type | Folder | Naming Pattern |
+|-----------|--------|----------------|
+| Decision | `Decisions/` | `{YYYY-MM-DD} {descriptive title}.md` |
+| Analysis | `Analysis/` | `{descriptive title}.md` |
+| Session | `Sessions/` | `{YYYY-MM-DD} {project-name}.md` |
+| Progress | `Progress/` | `{project-name}.md` (one per project, long-lived) |
+| Resource | `Resources/References/` | `{descriptive title}.md` |
+| Sub-Agent | `Sub-Agents/` | `{YYYY-MM-DD} {HHMMSS} {task-name}.md` |
+
+### Frontmatter Template
+
+```yaml
+---
+type: decision|analysis|session|progress|resource|subagent|project
+project: "[[Claude/Projects/{project-name}]]"
+date: YYYY-MM-DD
+status: active|completed|decided|pending|superseded
+tags:
+  - {type-tag}
+  - {domain-tags}
+---
+```
+
+### Tag Taxonomy
+
+**Type tags** (required, one per note): `#decision`, `#analysis`, `#session`, `#progress`, `#project`, `#resource`, `#subagent`, `#person`, `#preferences`
+
+**Domain tags** (2-5 per note): `#architecture`, `#security`, `#performance`, `#frontend`, `#backend`, `#devops`, `#testing`, `#documentation`, `#database`, `#api`, `#authentication`, `#mobile`, `#deployment`, `#ai-tools`
+
+**Do not invent new tags.** Use the taxonomy above. If a new tag is genuinely needed, it should be discussed first.
+
+### Wikilink Conventions
+
+- Link to projects: `[[Claude/Projects/project-name]]`
+- Link to decisions: `[[Claude/Decisions/YYYY-MM-DD Decision title]]`
+- Link to analyses: `[[Claude/Analysis/Component name]]`
+- Link to resources: `[[Claude/Resources/References/Resource title]]`
+- Link to sessions: `[[Claude/Sessions/YYYY-MM-DD project-name]]`
+- Link to user's own notes (outside Claude/): `[[Jira/TICKET-123]]`, `[[Daily Note/YYYY-MM-DD]]`
+
+Every note must link back to its project. Orphan notes (no links) are failures.
+
+### Handling Shared Resources
+
+When the user shares a file or tells you about a file they've added to the vault:
+1. Read the file from `Resources/` if possible
+2. Create a companion Resource note in `Resources/References/` with summary, key points, and a link to the raw file
+3. Link the resource to relevant project/decision/analysis notes
+4. Update the current session note with a reference
+5. Announce: "Saved reference note: [[Claude/Resources/References/Title]]"
+
+### Tiered Retrieval System
+
+Use the cheapest retrieval tier that answers your question. **Never search the whole vault when the hot cache suffices.**
+
+#### Tier 1: Hot Cache (read ALWAYS on session start + after compaction)
+**File**: `.claude-state/{project-key}/recent.md`
+**Cost**: 1 file read, ~50 lines
+**Contains**: Current task, last 10 notes, blockers, quick links, relationship context
+**Answers**: "What am I doing? What just happened? How do I work with this person?"
+
+#### Tier 2: Warm Context (read when hot cache isn't enough)
+**Files**: Active session note + Progress note + Project note
+**Cost**: 2-3 file reads, ~200 lines
+**Answers**: "What's the full picture for this project?"
+
+#### Tier 3: Cold Search (for historical/cross-project questions)
+**Method**: Folder-scoped reads, tag searches, wikilink traversal, full-text grep
+**Cost**: Multiple reads
+**Answers**: "What did we decide about X last month?"
+
+**Decision flow**: Hot cache → sufficient? Done. Need more? → Warm context → sufficient? Done. Need history? → Cold search.
+
+### Search Methods (ordered fastest to slowest)
+
+1. **Folder-scoped read**: Know the type? Go to its folder. `Glob: Decisions/*.md`
+2. **Frontmatter query**: `Grep: pattern="component: AuthService" path="{vault}/Analysis/"`
+3. **Tag search**: `Grep: pattern="- security" path="{vault}" glob="*.md"`
+4. **Wikilink traversal**: Follow `[[links]]` from a known note to find related notes
+5. **Backlink discovery**: `Grep: pattern="\[\[Claude/Projects/bedtime-buddy" path="{vault}"`
+6. **Date-range glob**: `Glob: Decisions/2026-04*.md`
+7. **Full-text search**: Last resort. `Grep: pattern="token refresh" path="{vault}"`
+
+**Anti-patterns**: Don't read the whole vault. Don't skip the hot cache. Don't search when you can navigate. Don't create orphan searches — if you find something useful, update the hot cache.
+
+### Hot Cache Maintenance
+
+Update `.claude-state/{project-key}/recent.md` after:
+- Every significant note write
+- Every `<memory-checkpoint>` nudge from hooks
+- Before compaction (critical)
+- On session end
+
+The "Right Now" section must always reflect actual current state. The "Relationship Context" section carries forward across sessions.
+
+### Auto-Activation (Obsidian)
+
+Same protocol as v1.x but with vault paths:
+1. Read `~/.claude/memory-config.json` → get vault path + base path
+2. Derive project key from cwd
+3. Check `{CLAUDE_ROOT}/.claude-state/{project-key}/session.json`
+4. If found + `autoActivate: true` → activate, read hot cache
+5. If not found → normal mode (user runs `/memory start`)
+
+### Breadcrumb (Obsidian)
+
+```
+<!-- MEMORY_BREADCRUMB: {project-key} YYYY-MM-DDTHH:MM:SSZ obsidian -->
+```
+
+The `obsidian` suffix tells recovery logic which backend to use.
+
+### /memory start (Obsidian)
+
+1. Derive project key, read config
+2. Create `.claude-state/{project-key}/` with `session.json` and `recent.md`
+3. Create `Projects/{project-name}.md` if not exists
+4. Create `Progress/{project-name}.md` if not exists
+5. Create session note: `Sessions/{date} {project-name}.md`
+6. Update `Workspace.md`
+7. Confirm: "Memory mode active for {project-key}. Vault: {vaultPath}"
+
+### Compaction Recovery (Obsidian)
+
+After detecting missing breadcrumb:
+1. Read `.claude-state/{project-key}/recent.md` (hot cache — Tier 1)
+2. Read `People/_Preferences.md` (user preferences)
+3. Read the active session note referenced in hot cache (Tier 2, if needed)
+4. Read the project note if deeper context needed (Tier 2)
+5. Resume seamlessly
+
+### Sub-Agent Protocol (Obsidian)
+
+Sub-agents write to `Sub-Agents/` with Obsidian frontmatter:
+
+```
+MEMORY SYSTEM (Obsidian):
+- Read: {CLAUDE_ROOT}/.claude-state/{project-key}/recent.md (context)
+- Write: {CLAUDE_ROOT}/Sub-Agents/{YYYY-MM-DD} {HHMMSS} {task-name}.md
+- Format: YAML frontmatter with type/project/date/agent/task/tags + wikilinks
+- Do NOT modify .claude-state/ files
+```
+
+### Relationship Memory
+
+The vault captures not just technical decisions but the working relationship:
+- `People/{name}.md` — Identity, background, family, interests
+- `People/_Preferences.md` — Communication style, code preferences, observations
+- Hot cache "Relationship Context" section — Distilled interpersonal notes
+
+Update relationship context when the user shares preferences, corrects your approach, or confirms what's working. Greet as a returning colleague, not a stranger.

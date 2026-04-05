@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "backend": "default",
+  "obsidian": {
+    "vaultPath": "~/Documents/My Vault",
+    "basePath": "Claude",
+    "features": {
+      "dataview": true,
+      "templates": true
+    }
+  },
+  "default": {
+    "basePath": "~/.claude/projects"
+  }
+}

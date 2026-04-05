@@ -1,6 +1,6 @@
 # Infinite Memory Mode for Claude Code
 
-A user-level context persistence system that gives Claude perfect memory across all your projects and sessions.
+A user-level context persistence system that gives Claude perfect memory across all your projects and sessions. Optionally backed by an **Obsidian vault** that doubles as your personal knowledge base.
 
 ## What This Does
 
@@ -14,6 +14,8 @@ Once installed at the user level (`~/.claude/`), Claude will — in **every proj
 - **Coordinate memory across sub-agents** — parallel agents share context
 - **Track branch switches automatically** — stay oriented when you move fast
 - **Auto-save via hooks** — memory stays current without manual writes (v1.6.0+)
+- **Obsidian vault integration** — browsable knowledge graph with tags, links, and Dataview dashboards (v2.0+)
+- **Shared resources** — drop PDFs, images, docs into the vault for Claude to reference (v2.0+)
 
 **From your perspective**: Install once, work normally. Claude never forgets.
 
@@ -28,7 +30,10 @@ cd memory-mode-portable
 ```
 
 The installer will:
+- Ask you to choose a storage backend: **Default** (flat files) or **Obsidian** (knowledge base)
+- If Obsidian: auto-detect your vaults, set up folder structure and templates
 - Create `~/.claude/user/` and `~/.claude/projects/` directories
+- Write `~/.claude/memory-config.json` with your backend choice
 - Copy `MEMORY.md` and `USER.md` to `~/.claude/`
 - Set up `CLAUDE.md` with the Session Start Protocol (or guide you to update yours)
 - Create `workspace.md` from template
@@ -230,6 +235,94 @@ Claude always announces what it stores and references preferences when using the
 
 Claude can reference any project's memory when context is relevant — all under `~/.claude/`, no permission prompts needed.
 
+## Obsidian Backend (v2.0+)
+
+The Obsidian backend transforms Claude's memory into a **dual-purpose knowledge base** — all memory files become browsable, searchable, and graphable Obsidian notes with tags, wikilinks, and Dataview queries.
+
+### Why Obsidian?
+
+- **One graph** — Claude's decisions and your notes are all connected
+- **Tags + wikilinks** — find anything by topic, project, or relationship
+- **Dataview dashboards** — auto-generated views of decisions, active work, blockers
+- **Shared resources** — drop files into the vault for Claude to reference in future sessions
+- **Graph view** — see how projects, decisions, and analyses connect visually
+- **Your knowledge base** — not just AI memory, it's useful to you too
+- **Plain markdown** — no vendor lock-in, works with any editor
+
+### Setup
+
+Choose "Obsidian" during `./install.sh`. The installer will:
+1. Scan for existing Obsidian vaults on your system
+2. Let you pick a vault or create a new one
+3. Create a `Claude/` subfolder with the full folder structure
+4. Install note templates, dashboard, and resource index
+
+### Using an Existing Vault
+
+**Recommended**: Use your existing vault. Claude's memory lives in a `Claude/` subfolder and shares the same graph as your other notes. You can cross-link freely between your notes and Claude's.
+
+```json
+{
+  "backend": "obsidian",
+  "obsidian": {
+    "vaultPath": "~/Documents/My Vault",
+    "basePath": "Claude"
+  }
+}
+```
+
+### Vault Structure
+
+```
+Your Vault/
+├── Your existing folders...
+└── Claude/                    # All Claude memory lives here
+    ├── _Dashboard.md          # Dataview-powered overview
+    ├── _Templates/            # Note templates
+    ├── Projects/              # One note per project
+    ├── Decisions/             # Decision records with tags & links
+    ├── Analysis/              # Code/component analyses
+    ├── Sessions/              # Session logs (what Claude was doing)
+    ├── Progress/              # Work tracking per project
+    ├── Resources/             # Shared files & reference notes
+    ├── People/                # User profile & preferences
+    ├── Sub-Agents/            # Sub-agent outputs
+    └── .claude-state/         # Machine state (hidden from Obsidian)
+```
+
+### Sharing Files with Claude
+
+Drop files into `Claude/Resources/` (PDFs, images, documents, code snippets). Tell Claude about them and it will:
+1. Read the file
+2. Create a companion reference note with summary and tags
+3. Link it to relevant projects and decisions
+4. Make it discoverable in future sessions
+
+### Recommended Plugins
+
+| Plugin | Type | Why |
+|--------|------|-----|
+| **Templates** | Core | Insert note templates |
+| **Dataview** | Community | Powers the dashboard and project activity views |
+
+### Migrating Existing Memories
+
+If you're upgrading from v1.x with existing memory files:
+
+```bash
+./migrate-to-obsidian.sh
+```
+
+This converts all files in `~/.claude/projects/` to Obsidian format with frontmatter, tags, and wikilinks. Original files are preserved.
+
+### Switching Backends
+
+Edit `~/.claude/memory-config.json` and change `backend` to `"default"` or `"obsidian"`. Both backends can coexist — switching doesn't delete anything.
+
+### Design Document
+
+See [OBSIDIAN-DESIGN.md](OBSIDIAN-DESIGN.md) for the full architectural design including tag taxonomy, linking strategy, tiered retrieval system, search literacy, and relationship memory.
+
 ## Troubleshooting
 
 | Problem | Solution |
@@ -264,6 +357,21 @@ rm -rf ~/workspace/my_app/.claude/
 ```
 
 ## Version History
+
+### v2.0.0 - Obsidian Backend
+- Optional Obsidian vault backend for dual-purpose AI memory + user knowledge base
+- All notes use YAML frontmatter, tags, and `[[wikilinks]]` for graph connectivity
+- Tiered retrieval system: hot cache (instant) → warm context → cold search
+- Shared resources system: drop files into the vault for Claude to reference
+- Dataview-powered dashboard with project, decision, and activity views
+- 12 Obsidian note templates (Decision, Analysis, Session, Project, etc.)
+- `memory-config.json` for backend selection (default or obsidian)
+- `migrate-to-obsidian.sh` for converting v1.x memory to Obsidian format
+- Backend-aware hooks with vault path resolution (`memory-common.sh`)
+- Relationship & continuity memory section in hot cache
+- Obsidian search literacy instructions for efficient vault navigation
+- Existing vault support with configurable `basePath` subfolder
+- Full design document: `OBSIDIAN-DESIGN.md`
 
 ### v1.6.0 - Auto-Save Hooks
 - New hook system that tracks edits/commits and nudges Claude to save memory

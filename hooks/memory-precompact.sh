@@ -6,7 +6,11 @@
 #
 # NOTE: Do NOT use `set -e` — jq failures must not kill the script.
 
-STATE_DIR="$HOME/.claude/.memory-hooks"
+# Source common utilities for backend-aware path resolution
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/memory-common.sh" 2>/dev/null || true
+
+STATE_DIR=$(get_state_dir 2>/dev/null) || STATE_DIR="$HOME/.claude/.memory-hooks"
 STATE_FILE="$STATE_DIR/activity.json"
 
 EDITS=0
@@ -19,7 +23,14 @@ if [ -f "$STATE_FILE" ] && jq empty "$STATE_FILE" 2>/dev/null; then
     FILES_COUNT=$(jq -r '.files_changed | length' "$STATE_FILE" 2>/dev/null) || FILES_COUNT=0
 fi
 
-echo "<memory-checkpoint reason=\"pre-compaction\" priority=\"critical\">Context compaction is about to occur. BEFORE compaction completes, you MUST save current state to memory files: update context/current-task.md with what you are working on, progress/active.md with current progress, and any unsaved decisions to decisions/. You have $EDITS unsaved edits across $FILES_COUNT files and $COMMITS commits since last save.</memory-checkpoint>"
+# Detect backend for appropriate message
+BACKEND=$(get_backend 2>/dev/null) || BACKEND="default"
+
+if [ "$BACKEND" = "obsidian" ]; then
+    echo "<memory-checkpoint reason=\"pre-compaction\" priority=\"critical\" backend=\"obsidian\">Context compaction is about to occur. BEFORE compaction completes, you MUST save ALL current state to your Obsidian vault: update the active session note in Sessions/ with what you are working on, Progress/ with current progress, and any unsaved decisions to Decisions/. Also update the hot cache at .claude-state/{project}/recent.md. You have $EDITS unsaved edits across $FILES_COUNT files and $COMMITS commits since last save.</memory-checkpoint>"
+else
+    echo "<memory-checkpoint reason=\"pre-compaction\" priority=\"critical\">Context compaction is about to occur. BEFORE compaction completes, you MUST save current state to memory files: update context/current-task.md with what you are working on, progress/active.md with current progress, and any unsaved decisions to decisions/. You have $EDITS unsaved edits across $FILES_COUNT files and $COMMITS commits since last save.</memory-checkpoint>"
+fi
 
 # Reset state after compaction nudge
 if [ -f "$STATE_FILE" ]; then

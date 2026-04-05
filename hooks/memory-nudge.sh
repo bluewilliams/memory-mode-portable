@@ -6,7 +6,11 @@
 #
 # NOTE: Do NOT use `set -e` — jq failures must not kill the script.
 
-STATE_DIR="$HOME/.claude/.memory-hooks"
+# Source common utilities for backend-aware path resolution
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/memory-common.sh" 2>/dev/null || true
+
+STATE_DIR=$(get_state_dir 2>/dev/null) || STATE_DIR="$HOME/.claude/.memory-hooks"
 STATE_FILE="$STATE_DIR/activity.json"
 
 # No state file = nothing to nudge about
@@ -31,14 +35,25 @@ if [ "$ELAPSED" -lt 300 ]; then
     exit 0
 fi
 
+# Detect backend for appropriate nudge message
+BACKEND=$(get_backend 2>/dev/null) || BACKEND="default"
+
 # Thresholds for nudging
 NUDGE=""
 if [ "$COMMITS" -gt 0 ]; then
     FILES_COUNT=$(jq -r '.files_changed | length' "$STATE_FILE" 2>/dev/null) || FILES_COUNT=0
-    NUDGE="<memory-checkpoint reason=\"post-commit\">You have made $COMMITS commit(s) and edited $FILES_COUNT file(s) since your last memory save. If memory mode is active, update context/current-task.md and progress/active.md to reflect current state before continuing.</memory-checkpoint>"
+    if [ "$BACKEND" = "obsidian" ]; then
+        NUDGE="<memory-checkpoint reason=\"post-commit\" backend=\"obsidian\">You have made $COMMITS commit(s) and edited $FILES_COUNT file(s) since your last memory save. If memory mode is active, update the active session note in Sessions/ and the progress note in Progress/ in your Obsidian vault to reflect current state.</memory-checkpoint>"
+    else
+        NUDGE="<memory-checkpoint reason=\"post-commit\">You have made $COMMITS commit(s) and edited $FILES_COUNT file(s) since your last memory save. If memory mode is active, update context/current-task.md and progress/active.md to reflect current state before continuing.</memory-checkpoint>"
+    fi
 elif [ "$EDITS" -ge 10 ]; then
     FILES_COUNT=$(jq -r '.files_changed | length' "$STATE_FILE" 2>/dev/null) || FILES_COUNT=0
-    NUDGE="<memory-checkpoint reason=\"edit-threshold\">You have edited $FILES_COUNT file(s) ($EDITS total edits) since your last memory save. If memory mode is active, consider saving a checkpoint to context/current-task.md.</memory-checkpoint>"
+    if [ "$BACKEND" = "obsidian" ]; then
+        NUDGE="<memory-checkpoint reason=\"edit-threshold\" backend=\"obsidian\">You have edited $FILES_COUNT file(s) ($EDITS total edits) since your last memory save. If memory mode is active, save a checkpoint to the active session note in Sessions/ in your Obsidian vault.</memory-checkpoint>"
+    else
+        NUDGE="<memory-checkpoint reason=\"edit-threshold\">You have edited $FILES_COUNT file(s) ($EDITS total edits) since your last memory save. If memory mode is active, consider saving a checkpoint to context/current-task.md.</memory-checkpoint>"
+    fi
 fi
 
 if [ -n "$NUDGE" ]; then

@@ -7,7 +7,11 @@
 # NOTE: Do NOT use `set -e` — jq failures on malformed input must not
 # kill the script. Claude Code reports any non-zero exit as "hook error."
 
-STATE_DIR="$HOME/.claude/.memory-hooks"
+# Source common utilities for backend-aware path resolution
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/memory-common.sh" 2>/dev/null || true
+
+STATE_DIR=$(get_state_dir 2>/dev/null) || STATE_DIR="$HOME/.claude/.memory-hooks"
 STATE_FILE="$STATE_DIR/activity.json"
 INIT_JSON='{"edits":0,"commits":0,"files_changed":[],"last_commit":"","last_nudge":0}'
 
