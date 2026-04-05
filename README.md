@@ -19,6 +19,37 @@ Once installed at the user level (`~/.claude/`), Claude will — in **every proj
 
 **From your perspective**: Install once, work normally. Claude never forgets.
 
+## Prerequisites
+
+- **Claude Code** (CLI, desktop app, or IDE extension) — this is what Memory Mode extends
+- **jq** — used by the auto-save hooks (`brew install jq` on macOS, `apt install jq` on Linux)
+- **git** — for cloning this repo and for branch tracking
+- **Obsidian** (optional) — only needed if you choose the Obsidian backend. Free at [obsidian.md](https://obsidian.md)
+
+## Quick Start
+
+```bash
+# 1. Clone and install (takes ~30 seconds)
+git clone https://github.com/bluewilliams/memory-mode-portable.git
+cd memory-mode-portable
+./install.sh
+
+# 2. Install auto-save hooks (recommended)
+./hooks/install-hooks.sh
+
+# 3. Open any project and start working
+cd ~/your-project
+claude  # or open in your IDE with Claude Code extension
+
+# 4. First time only: tell Claude to start memory
+#    Type in the Claude prompt:
+/memory start
+
+# That's it. Memory auto-activates for this project from now on.
+```
+
+**What to expect after install**: Claude will greet you by name (once you fill in your profile), remember what you were working on between sessions, persist important decisions and analyses to files, and recover seamlessly when long sessions hit context limits.
+
 ## Installation
 
 ### Automated Install (Recommended)
@@ -29,17 +60,21 @@ cd memory-mode-portable
 ./install.sh
 ```
 
-The installer will:
-- Ask you to choose a storage backend: **Default** (flat files) or **Obsidian** (knowledge base)
-- If Obsidian: auto-detect your vaults, set up folder structure and templates
-- Create `~/.claude/user/` and `~/.claude/projects/` directories
-- Write `~/.claude/memory-config.json` with your backend choice
-- Copy `MEMORY.md` and `USER.md` to `~/.claude/`
-- Set up `CLAUDE.md` with the Session Start Protocol (or guide you to update yours)
-- Create `workspace.md` from template
-- Create default user profile and preferences
+The interactive installer will:
+1. Ask you to choose a storage backend: **Default** (flat files) or **Obsidian** (knowledge base)
+2. If Obsidian: auto-detect your existing vaults, let you pick one (or create a new one)
+3. Create `~/.claude/user/` and `~/.claude/projects/` directories
+4. Write `~/.claude/memory-config.json` with your backend choice
+5. Copy `MEMORY.md` and `USER.md` to `~/.claude/` (the instruction files Claude reads)
+6. Set up `CLAUDE.md` with the Session Start Protocol (or guide you to update yours)
+7. Create `workspace.md` template for cross-project tracking
+8. Create default user profile and preferences for you to fill in
+
+**Important**: The installer creates a `CLAUDE.md` file at `~/.claude/CLAUDE.md`. This is the entry point that tells Claude to load memory mode. It contains `@MEMORY.md` and `@USER.md` references that pull in the full instruction set. If you already have a `CLAUDE.md`, the installer will check it has these references and offer to add them.
 
 ### Manual Install
+
+If you prefer to set things up yourself:
 
 1. **Copy instruction files to user-level config:**
    ```bash
@@ -52,7 +87,7 @@ The installer will:
    mkdir -p ~/.claude/user ~/.claude/projects
    ```
 
-3. **Set up CLAUDE.md:**
+3. **Set up CLAUDE.md** (this is what makes Claude load memory mode):
    ```bash
    # New installation:
    cp CLAUDE.md.example ~/.claude/CLAUDE.md
@@ -66,6 +101,12 @@ The installer will:
 4. **Set up workspace.md:**
    ```bash
    cp workspace.md.example ~/.claude/workspace.md
+   ```
+
+5. **Create the backend config:**
+   ```bash
+   cp memory-config.json.example ~/.claude/memory-config.json
+   # Edit to set backend: "default" or "obsidian"
    ```
 
 ### Updating
@@ -82,18 +123,19 @@ The installer preserves your existing `CLAUDE.md`, `workspace.md`, profile, and 
 
 ### Sharing With Others
 
-Send them this repo. They run `./install.sh`. Done.
+Send them this repo. They run `./install.sh`. Done. The whole setup is self-contained and takes under a minute.
 
 ### Installing Hooks (Optional, Recommended)
 
 After the base install, add auto-save hooks:
 
 ```bash
-cd memory-mode-portable
 ./hooks/install-hooks.sh
 ```
 
-This installs three hooks into `~/.claude/hooks/` and prints the settings.json configuration to add. The hooks automatically track your edits and commits, then nudge Claude to save memory state when significant work has accumulated. See [Auto-Save Hooks](#auto-save-hooks) for details.
+This installs hook scripts into `~/.claude/hooks/` and configures them in `~/.claude/settings.json`. The hooks automatically track your edits and commits, then nudge Claude to save memory state when significant work has accumulated. See [Auto-Save Hooks](#auto-save-hooks) for details.
+
+**If you already have a `~/.claude/settings.json`**: The hook installer will detect this and print the JSON you need to merge manually (it won't overwrite your existing settings).
 
 ## How It Works
 
@@ -298,12 +340,33 @@ Drop files into `Claude/Resources/` (PDFs, images, documents, code snippets). Te
 3. Link it to relevant projects and decisions
 4. Make it discoverable in future sessions
 
+### Required Obsidian Setup
+
+After running the installer with the Obsidian backend:
+
+1. **Open your vault in Obsidian** (if not already open). You should see a `Claude/` folder.
+
+2. **Enable Templates core plugin**:
+   - Settings → Core Plugins → Templates → Enable
+   - Set Template folder to: `Claude/_Templates`
+
+3. **Install Dataview community plugin** (powers the dashboard):
+   - Settings → Community Plugins → Turn on community plugins
+   - Browse → Search "Dataview" → Install → Enable
+   - In Dataview settings: enable "Enable JavaScript Queries" and "Enable Inline Queries"
+
+   *Alternatively, the migration script auto-installs Dataview if you run `./migrate-to-obsidian.sh`.*
+
+4. **Verify the dashboard**: Open `Claude/_Dashboard.md` — you should see live tables of your projects, decisions, and sessions (requires Dataview).
+
 ### Recommended Plugins
 
 | Plugin | Type | Why |
 |--------|------|-----|
-| **Templates** | Core | Insert note templates |
-| **Dataview** | Community | Powers the dashboard and project activity views |
+| **Templates** | Core (built-in) | Insert note templates when creating notes manually |
+| **Dataview** | Community | Powers the dashboard queries and inline stats. **Strongly recommended.** |
+| **Graph Analysis** | Community | Enhanced graph view with clustering |
+| **Tag Wrangler** | Community | Bulk rename/merge tags |
 
 ### Migrating Existing Memories
 
@@ -336,6 +399,11 @@ See [OBSIDIAN-DESIGN.md](OBSIDIAN-DESIGN.md) for the full architectural design i
 | Sub-agents not using memory | Ensure memory is active (`/memory status`) |
 | Claude not recognizing you | Check SESSION START PROTOCOL in `~/.claude/CLAUDE.md` and that `~/.claude/user/profile.md` exists |
 | Workspace not showing projects | Projects register on first `/memory start`. Or edit `~/.claude/workspace.md` manually |
+| Dashboard shows "dataview" errors | Install the Dataview community plugin in Obsidian |
+| Claude writing to wrong location | Check `~/.claude/memory-config.json` — verify `vaultPath` and `basePath` |
+| Obsidian not showing Claude folder | The vault path in config may be wrong. Verify with `cat ~/.claude/memory-config.json` |
+| Hooks not firing | Run `./hooks/install-hooks.sh` and check `~/.claude/settings.json` has the hooks config |
+| Migration missed some projects | Some projects may only have session IDs, not memory files. Re-run `/memory start` in those projects |
 
 ## Migration from v1.2.x (Project-Level Storage)
 
