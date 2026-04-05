@@ -135,7 +135,7 @@ if [ "$BACKEND_CHOICE" = "2" ]; then
     echo "Setting up Obsidian vault structure..."
 
     # Create folder structure
-    mkdir -p "$CLAUDE_ROOT"/{.claude-state,Projects,Decisions,Analysis,Sessions,Progress,Sub-Agents}
+    mkdir -p "$CLAUDE_ROOT"/{.claude-state,Projects,Decisions,Analysis,Sessions,Progress,Sub-Agents,Brag}
     mkdir -p "$CLAUDE_ROOT"/Resources/{PDFs,Images,Documents,Snippets,References,"Meeting Notes"}
     mkdir -p "$CLAUDE_ROOT"/People
     mkdir -p "$CLAUDE_ROOT"/_Templates
@@ -155,6 +155,10 @@ if [ "$BACKEND_CHOICE" = "2" ]; then
                 "_Resource Index.md")
                     cp "$template" "$CLAUDE_ROOT/Resources/_Resource Index.md"
                     echo "    _Resource Index.md → Resources/"
+                    ;;
+                "_Brag Dashboard.md")
+                    cp "$template" "$CLAUDE_ROOT/Brag/_Brag Dashboard.md"
+                    echo "    _Brag Dashboard.md → Brag/"
                     ;;
                 Workspace.md)
                     if [ ! -f "$CLAUDE_ROOT/Workspace.md" ]; then

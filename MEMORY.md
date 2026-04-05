@@ -804,3 +804,91 @@ The vault captures not just technical decisions but the working relationship:
 - Hot cache "Relationship Context" section — Distilled interpersonal notes
 
 Update relationship context when the user shares preferences, corrects your approach, or confirms what's working. Greet as a returning colleague, not a stranger.
+
+### Brag Capture (Obsidian only)
+
+Claude automatically captures significant accomplishments to help the user build their brag document for performance reviews. This runs passively alongside normal work.
+
+#### When to Capture a Brag
+
+Capture when you detect any of these during a session:
+- **Shipped a feature or release** — completed a feature, merged a PR, deployed to production
+- **Fixed a critical bug** — resolved an outage, production issue, or high-severity bug
+- **Significant time/cost savings** — automated something, improved a process, reduced build times
+- **Architectural improvement** — designed a system, made a key technical decision with lasting impact
+- **Led or unblocked a team** — mentored, onboarded, resolved a blocker for others
+- **Exceeded expectations** — delivered ahead of schedule, handled something outside normal scope
+- **Learned and applied something new** — adopted a new tool/framework that improved the team
+
+**Do NOT capture**: routine bug fixes, normal feature work, standard code reviews, or everyday tasks. Capture the things that stand out — the things worth mentioning in a review.
+
+#### How to Capture
+
+1. **Create a brag note** at `Brag/{YYYY-MM-DD} {short title}.md`:
+
+```yaml
+---
+type: brag
+project: "[[Claude/Projects/{project-name}]]"
+date: YYYY-MM-DD
+quarter: "Q{N} {YYYY}"
+tags:
+  - brag
+  - {domain-tags}
+---
+```
+
+2. **Write 2-4 sentences** covering:
+   - **What**: What was accomplished (factual)
+   - **Impact**: Why it mattered (time saved, risk avoided, team unblocked, cost reduced)
+   - **Evidence**: Link to the related decision, analysis, or session note
+
+3. **Announce to the user**:
+   ```
+   Captured brag: "{title}" — [brief reason why this is notable]
+   ```
+
+4. **Link from the session note**: Add a reference in the current session's Notes section.
+
+#### Quarter Calculation
+
+- Q1: January - March
+- Q2: April - June
+- Q3: July - September
+- Q4: October - December
+
+Use the format `"Q2 2026"` in the `quarter` frontmatter field.
+
+#### Example Brag Note
+
+```markdown
+---
+type: brag
+project: "[[Claude/Projects/memory-mode-portable]]"
+date: 2026-04-05
+quarter: "Q2 2026"
+tags:
+  - brag
+  - architecture
+  - ai-tools
+---
+
+# Built Obsidian-backed AI Memory System
+
+## What
+Designed and shipped v2.0 of memory-mode-portable with an Obsidian vault
+backend. Transforms AI session memory into a browsable knowledge base with
+tags, wikilinks, graph view, and Dataview dashboards.
+
+## Impact
+Makes AI collaboration context persistent and human-useful. Migrated 30+
+projects automatically. Open-source tool that any Claude Code user can adopt.
+
+## Evidence
+- [[Claude/Decisions/2026-04-05 Use Obsidian as memory backend]]
+- [[Claude/Sessions/2026-04-05 memory-mode-portable]]
+```
+
+#### Brag Dashboard
+
+The `Brag/_Brag Dashboard.md` note uses Dataview queries to show accomplishments by quarter, by project, and with stats. This is the note to open at review time.

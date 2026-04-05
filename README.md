@@ -382,6 +382,16 @@ This converts all files in `~/.claude/projects/` to Obsidian format with frontma
 
 Edit `~/.claude/memory-config.json` and change `backend` to `"default"` or `"obsidian"`. Both backends can coexist — switching doesn't delete anything.
 
+### Brag Capture (Auto Accomplishment Tracking)
+
+Claude automatically detects significant accomplishments during your work sessions and captures them as brag entries. These are designed for performance review preparation.
+
+**What gets captured**: Shipped features, critical bug fixes, significant time/cost savings, architectural improvements, team leadership moments, and anything that stands out beyond routine work.
+
+**Where it goes**: `Claude/Brag/{date} {title}.md` — each entry has frontmatter with the quarter, project, and tags. A `Brag/_Brag Dashboard.md` provides Dataview-powered views by quarter, by project, and overall stats.
+
+**How it works**: Claude announces each capture ("Captured brag: ...") so you always know what's being recorded. You can edit, delete, or add your own entries at any time.
+
 ### Design Document
 
 See [OBSIDIAN-DESIGN.md](OBSIDIAN-DESIGN.md) for the full architectural design including tag taxonomy, linking strategy, tiered retrieval system, search literacy, and relationship memory.
