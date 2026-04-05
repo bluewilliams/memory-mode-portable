@@ -150,7 +150,20 @@ if [ "$BACKEND_CHOICE" = "2" ]; then
             case "$filename" in
                 _Dashboard.md)
                     cp "$template" "$CLAUDE_ROOT/_Dashboard.md"
-                    echo "    _Dashboard.md → vault root"
+                    echo "    _Dashboard.md → Claude root"
+                    # Create shortcut at vault root for easy access
+                    if [ ! -f "$VAULT_PATH/!Dashboard.md" ]; then
+                        cat > "$VAULT_PATH/!Dashboard.md" << 'DASHEOF'
+---
+aliases:
+  - Home
+  - Dashboard
+---
+
+![[Claude/_Dashboard]]
+DASHEOF
+                        echo "    !Dashboard.md → vault root (shortcut)"
+                    fi
                     ;;
                 "_Resource Index.md")
                     cp "$template" "$CLAUDE_ROOT/Resources/_Resource Index.md"
