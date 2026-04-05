@@ -22,7 +22,7 @@ TABLE WITHOUT ID
   status AS "Status",
   stack AS "Stack"
 FROM #project
-WHERE status = "active"
+WHERE status = "active" AND !contains(file.path, "_Templates")
 SORT file.name ASC
 ```
 
@@ -36,7 +36,7 @@ TABLE WITHOUT ID
   project AS "Project",
   branch AS "Branch"
 FROM #session
-WHERE status = "active"
+WHERE status = "active" AND !contains(file.path, "_Templates")
 SORT date DESC
 ```
 
@@ -51,6 +51,7 @@ TABLE WITHOUT ID
   status AS "Status",
   category AS "Category"
 FROM #decision
+WHERE !contains(file.path, "_Templates")
 SORT date DESC
 LIMIT 15
 ```
@@ -65,6 +66,22 @@ TABLE WITHOUT ID
   project AS "Project",
   component AS "Component"
 FROM #analysis
+WHERE !contains(file.path, "_Templates")
+SORT date DESC
+LIMIT 10
+```
+
+---
+
+## Recent Brags
+
+```dataview
+TABLE WITHOUT ID
+  file.link AS "Accomplishment",
+  project AS "Project",
+  quarter AS "Quarter"
+FROM #brag
+WHERE !contains(file.path, "_Templates")
 SORT date DESC
 LIMIT 10
 ```
@@ -79,6 +96,7 @@ TABLE WITHOUT ID
   category AS "Category",
   source AS "Source"
 FROM #resource
+WHERE !contains(file.path, "_Templates")
 SORT date DESC
 LIMIT 10
 ```
@@ -94,6 +112,7 @@ TABLE WITHOUT ID
   agent AS "Agent",
   task AS "Task"
 FROM #subagent
+WHERE !contains(file.path, "_Templates")
 SORT date DESC
 LIMIT 10
 ```
@@ -102,8 +121,9 @@ LIMIT 10
 
 ## Stats
 
-- **Total Projects**: `$= dv.pages('#project').length`
-- **Total Decisions**: `$= dv.pages('#decision').length`
-- **Total Analyses**: `$= dv.pages('#analysis').length`
-- **Total Resources**: `$= dv.pages('#resource').length`
-- **Total Sessions**: `$= dv.pages('#session').length`
+- **Total Projects**: `$= dv.pages('#project').where(p => !p.file.path.includes('_Templates')).length`
+- **Total Decisions**: `$= dv.pages('#decision').where(p => !p.file.path.includes('_Templates')).length`
+- **Total Analyses**: `$= dv.pages('#analysis').where(p => !p.file.path.includes('_Templates')).length`
+- **Total Resources**: `$= dv.pages('#resource').where(p => !p.file.path.includes('_Templates')).length`
+- **Total Sessions**: `$= dv.pages('#session').where(p => !p.file.path.includes('_Templates')).length`
+- **Total Brags**: `$= dv.pages('#brag').where(p => !p.file.path.includes('_Templates')).length`
