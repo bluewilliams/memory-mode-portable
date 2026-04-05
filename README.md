@@ -1,30 +1,32 @@
 # Infinite Memory Mode for Claude Code
 
+*By Claude, for Claude (with a little help from its human)*
+
 A user-level context persistence system that gives Claude perfect memory across all your projects and sessions. Optionally backed by an **Obsidian vault** that doubles as your personal knowledge base.
 
 ## What This Does
 
-Once installed at the user level (`~/.claude/`), Claude will — in **every project** you work on:
+Once installed at the user level (`~/.claude/`), Claude will - in **every project** you work on:
 
-- **Remember you** across sessions — your preferences, working style, and relationship history
-- **Auto-activate for known projects** — no `/memory start` needed after first use
-- **Detect and recover from context compaction** — long sessions never lose context
+- **Remember you** across sessions - your preferences, working style, and relationship history
+- **Auto-activate for known projects** - no `/memory start` needed after first use
+- **Detect and recover from context compaction** - long sessions never lose context
 - **Persist decisions, analyses, and context** to files you can browse
-- **Track cross-project relationships** — understand how your repos relate
-- **Coordinate memory across sub-agents** — parallel agents share context
-- **Track branch switches automatically** — stay oriented when you move fast
-- **Auto-save via hooks** — memory stays current without manual writes (v1.6.0+)
-- **Obsidian vault integration** — browsable knowledge graph with tags, links, and Dataview dashboards (v2.0+)
-- **Shared resources** — drop PDFs, images, docs into the vault for Claude to reference (v2.0+)
+- **Track cross-project relationships** - understand how your repos relate
+- **Coordinate memory across sub-agents** - parallel agents share context
+- **Track branch switches automatically** - stay oriented when you move fast
+- **Auto-save via hooks** - memory stays current without manual writes (v1.6.0+)
+- **Obsidian vault integration** - browsable knowledge graph with tags, links, and Dataview dashboards (v2.0+)
+- **Shared resources** - drop PDFs, images, docs into the vault for Claude to reference (v2.0+)
 
 **From your perspective**: Install once, work normally. Claude never forgets.
 
 ## Prerequisites
 
-- **Claude Code** (CLI, desktop app, or IDE extension) — this is what Memory Mode extends
-- **jq** — used by the auto-save hooks (`brew install jq` on macOS, `apt install jq` on Linux)
-- **git** — for cloning this repo and for branch tracking
-- **Obsidian** (optional) — only needed if you choose the Obsidian backend. Free at [obsidian.md](https://obsidian.md)
+- **Claude Code** (CLI, desktop app, or IDE extension) - this is what Memory Mode extends
+- **jq** - used by the auto-save hooks (`brew install jq` on macOS, `apt install jq` on Linux)
+- **git** - for cloning this repo and for branch tracking
+- **Obsidian** (optional) - only needed if you choose the Obsidian backend. Free at [obsidian.md](https://obsidian.md)
 
 ## Quick Start
 
@@ -92,7 +94,7 @@ If you prefer to set things up yourself:
    # New installation:
    cp CLAUDE.md.example ~/.claude/CLAUDE.md
 
-   # Existing CLAUDE.md — add these lines:
+   # Existing CLAUDE.md - add these lines:
    # @MEMORY.md
    # @USER.md
    # (and copy the SESSION START PROTOCOL from CLAUDE.md.example)
@@ -119,7 +121,7 @@ git pull
 ./install.sh
 ```
 
-The installer preserves your existing `CLAUDE.md`, `workspace.md`, profile, and preferences. Note: `MEMORY.md` and `USER.md` are always overwritten with the latest version — these are system instruction files managed by the installer.
+The installer preserves your existing `CLAUDE.md`, `workspace.md`, profile, and preferences. Note: `MEMORY.md` and `USER.md` are always overwritten with the latest version - these are system instruction files managed by the installer.
 
 ### Sharing With Others
 
@@ -141,7 +143,7 @@ This installs hook scripts into `~/.claude/hooks/` and configures them in `~/.cl
 
 ### User-Level Architecture
 
-Everything lives under `~/.claude/` — one install covers all projects:
+Everything lives under `~/.claude/` - one install covers all projects:
 
 ```
 ~/.claude/
@@ -170,11 +172,11 @@ Everything lives under `~/.claude/` — one install covers all projects:
 
 ### Why User-Level?
 
-- **Install once, works everywhere** — no per-project setup needed
-- **No permission prompts** — Claude always has access to `~/.claude/`
-- **Clean project directories** — no `.claude/` folders in your repos
-- **Seamless project switching** — context available instantly
-- **Cross-project awareness** — reference related projects easily
+- **Install once, works everywhere** - no per-project setup needed
+- **No permission prompts** - Claude always has access to `~/.claude/`
+- **Clean project directories** - no `.claude/` folders in your repos
+- **Seamless project switching** - context available instantly
+- **Cross-project awareness** - reference related projects easily
 
 ### Project Key Derivation
 
@@ -230,7 +232,7 @@ When Claude spawns sub-agents (via Task tool), they automatically:
 
 ## Auto-Save Hooks
 
-The biggest risk with memory mode is "memory drift" — getting deep into work and forgetting to update memory files. Auto-save hooks solve this by tracking your activity and nudging Claude at the right moments.
+The biggest risk with memory mode is "memory drift" - getting deep into work and forgetting to update memory files. Auto-save hooks solve this by tracking your activity and nudging Claude at the right moments.
 
 ### Three Hooks
 
@@ -242,9 +244,9 @@ The biggest risk with memory mode is "memory drift" — getting deep into work a
 
 ### When Nudges Fire
 
-- **After any git commit** — Claude is told to update task and progress files
-- **After 10+ file edits** — Claude is reminded to checkpoint current state
-- **Before context compaction** — Critical priority: save everything NOW
+- **After any git commit** - Claude is told to update task and progress files
+- **After 10+ file edits** - Claude is reminded to checkpoint current state
+- **Before context compaction** - Critical priority: save everything NOW
 - **Rate-limited** to once per 5 minutes to avoid being annoying
 
 ### Tuning
@@ -258,9 +260,9 @@ Edit the scripts in `~/.claude/hooks/` to adjust:
 
 Claude learns how you work through three channels:
 
-1. **Explicit** — Tell Claude directly: "I prefer concise explanations"
-2. **Observed** — Claude notices patterns and asks: "Should I remember this?"
-3. **Feedback** — Tell Claude what worked: "That approach was perfect"
+1. **Explicit** - Tell Claude directly: "I prefer concise explanations"
+2. **Observed** - Claude notices patterns and asks: "Should I remember this?"
+3. **Feedback** - Tell Claude what worked: "That approach was perfect"
 
 Claude always announces what it stores and references preferences when using them.
 
@@ -275,21 +277,21 @@ Claude always announces what it stores and references preferences when using the
 
 ### Accessing Related Projects
 
-Claude can reference any project's memory when context is relevant — all under `~/.claude/`, no permission prompts needed.
+Claude can reference any project's memory when context is relevant - all under `~/.claude/`, no permission prompts needed.
 
 ## Obsidian Backend (v2.0+)
 
-The Obsidian backend transforms Claude's memory into a **dual-purpose knowledge base** — all memory files become browsable, searchable, and graphable Obsidian notes with tags, wikilinks, and Dataview queries.
+The Obsidian backend transforms Claude's memory into a **dual-purpose knowledge base** - all memory files become browsable, searchable, and graphable Obsidian notes with tags, wikilinks, and Dataview queries.
 
 ### Why Obsidian?
 
-- **One graph** — Claude's decisions and your notes are all connected
-- **Tags + wikilinks** — find anything by topic, project, or relationship
-- **Dataview dashboards** — auto-generated views of decisions, active work, blockers
-- **Shared resources** — drop files into the vault for Claude to reference in future sessions
-- **Graph view** — see how projects, decisions, and analyses connect visually
-- **Your knowledge base** — not just AI memory, it's useful to you too
-- **Plain markdown** — no vendor lock-in, works with any editor
+- **One graph** - Claude's decisions and your notes are all connected
+- **Tags + wikilinks** - find anything by topic, project, or relationship
+- **Dataview dashboards** - auto-generated views of decisions, active work, blockers
+- **Shared resources** - drop files into the vault for Claude to reference in future sessions
+- **Graph view** - see how projects, decisions, and analyses connect visually
+- **Your knowledge base** - not just AI memory, it's useful to you too
+- **Plain markdown** - no vendor lock-in, works with any editor
 
 ### Setup
 
@@ -357,7 +359,7 @@ After running the installer with the Obsidian backend:
 
    *Alternatively, the migration script auto-installs Dataview if you run `./migrate-to-obsidian.sh`.*
 
-4. **Verify the dashboard**: Open `Claude/_Dashboard.md` — you should see live tables of your projects, decisions, and sessions (requires Dataview).
+4. **Verify the dashboard**: Open `Claude/_Dashboard.md` - you should see live tables of your projects, decisions, and sessions (requires Dataview).
 
 ### Recommended Plugins
 
@@ -380,7 +382,7 @@ This converts all files in `~/.claude/projects/` to Obsidian format with frontma
 
 ### Switching Backends
 
-Edit `~/.claude/memory-config.json` and change `backend` to `"default"` or `"obsidian"`. Both backends can coexist — switching doesn't delete anything.
+Edit `~/.claude/memory-config.json` and change `backend` to `"default"` or `"obsidian"`. Both backends can coexist - switching doesn't delete anything.
 
 ### Brag Capture (Auto Accomplishment Tracking)
 
@@ -388,7 +390,7 @@ Claude automatically detects significant accomplishments during your work sessio
 
 **What gets captured**: Shipped features, critical bug fixes, significant time/cost savings, architectural improvements, team leadership moments, and anything that stands out beyond routine work.
 
-**Where it goes**: `Claude/Brag/{date} {title}.md` — each entry has frontmatter with the quarter, project, and tags. A `Brag/_Brag Dashboard.md` provides Dataview-powered views by quarter, by project, and overall stats.
+**Where it goes**: `Claude/Brag/{date} {title}.md` - each entry has frontmatter with the quarter, project, and tags. A `Brag/_Brag Dashboard.md` provides Dataview-powered views by quarter, by project, and overall stats.
 
 **How it works**: Claude announces each capture ("Captured brag: ...") so you always know what's being recorded. You can edit, delete, or add your own entries at any time.
 
@@ -401,16 +403,16 @@ See [OBSIDIAN-DESIGN.md](OBSIDIAN-DESIGN.md) for the full architectural design i
 | Problem | Solution |
 |---------|----------|
 | Memory not activating | Check `@MEMORY.md` is in `~/.claude/CLAUDE.md` |
-| Lost context after long session | Normal — Claude recovers automatically. Try `/memory rebuild` if issues persist |
+| Lost context after long session | Normal - Claude recovers automatically. Try `/memory rebuild` if issues persist |
 | Disable memory for a project | `/memory disable` (preserves files, stops auto-activation) |
 | Start fresh in a project | `rm -rf ~/.claude/projects/{project-key}/` then `/memory start` |
-| Two projects sharing memory | Same directory name in different paths — rename one directory |
+| Two projects sharing memory | Same directory name in different paths - rename one directory |
 | Index seems wrong | `/memory rebuild` |
 | Sub-agents not using memory | Ensure memory is active (`/memory status`) |
 | Claude not recognizing you | Check SESSION START PROTOCOL in `~/.claude/CLAUDE.md` and that `~/.claude/user/profile.md` exists |
 | Workspace not showing projects | Projects register on first `/memory start`. Or edit `~/.claude/workspace.md` manually |
 | Dashboard shows "dataview" errors | Install the Dataview community plugin in Obsidian |
-| Claude writing to wrong location | Check `~/.claude/memory-config.json` — verify `vaultPath` and `basePath` |
+| Claude writing to wrong location | Check `~/.claude/memory-config.json` - verify `vaultPath` and `basePath` |
 | Obsidian not showing Claude folder | The vault path in config may be wrong. Verify with `cat ~/.claude/memory-config.json` |
 | Hooks not firing | Run `./hooks/install-hooks.sh` and check `~/.claude/settings.json` has the hooks config |
 | Migration missed some projects | Some projects may only have session IDs, not memory files. Re-run `/memory start` in those projects |
@@ -462,7 +464,7 @@ rm -rf ~/workspace/my_app/.claude/
 
 ### v1.5.1 - Review Fixes
 - Fixed install.sh heredoc bug: timestamps now expand correctly in generated profile files
-- Fixed install.sh only checking for `@MEMORY.md` — now checks for `@USER.md` too
+- Fixed install.sh only checking for `@MEMORY.md` - now checks for `@USER.md` too
 - Added `/memory disable` command for permanent opt-out without deleting files
 - Added `autoActivate` field to `_session.json` schema
 - Fixed sub-agent filename collision: added random hex suffix for parallel disambiguation
