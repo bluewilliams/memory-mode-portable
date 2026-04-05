@@ -14,6 +14,21 @@ aliases:
 
 ---
 
+## Needs Attention
+
+```dataview
+TABLE WITHOUT ID
+  file.link AS "Note",
+  type AS "Type",
+  project AS "Project",
+  date AS "Date"
+FROM ""
+WHERE status = "stub" AND !contains(file.path, "_Templates")
+SORT date DESC
+```
+
+---
+
 ## Active Projects
 
 ```dataview
