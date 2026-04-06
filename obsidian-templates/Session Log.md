@@ -4,6 +4,7 @@ project: "[[Claude/Projects/]]"
 date: {{date}}
 branch: 
 status: active
+tickets: []
 tags:
   - session
 ---
@@ -14,11 +15,14 @@ tags:
 What we're working on.
 
 ## Progress
-- [ ] Step 1
-- [ ] Step 2
+- 🔄 Current step
+- ⏳ Next step
 
 ## Blockers
 None.
+
+## Done When
+- [ ] Completion criteria
 
 ## Decisions Made
 - (none yet)

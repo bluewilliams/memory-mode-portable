@@ -849,6 +849,113 @@ The vault captures not just technical decisions but the working relationship:
 
 Update relationship context when the user shares preferences, corrects your approach, or confirms what's working. Greet as a returning colleague, not a stranger.
 
+### Compact Progress Markers
+
+Use compact status markers in hot cache and session notes for scannability. These are faster to write and faster to read after compaction than prose paragraphs.
+
+**Status symbols**:
+- `✅` done / passed / shipped
+- `🔄` active / in progress
+- `🚧` blocked / waiting
+- `❌` failed / rejected
+- `💡` insight / learning
+- `⚠️` warning / risk
+
+**Shorthand for the "Right Now" section of hot cache**:
+```
+## Right Now
+🔄 Implementing offline tile caching for #KA-6135
+✅ Decided on IndexedDB approach (see Decisions/)
+🚧 Blocked on: need API response schema from backend team
+💡 Found that ServiceWorker cache has 50MB limit on iOS Safari
+```
+
+This replaces verbose prose like "I am currently working on implementing offline tile caching..." which wastes tokens and is harder to scan.
+
+**Use in session notes** for the Progress section:
+```
+## Progress
+- ✅ Investigated root cause
+- ✅ Designed caching strategy
+- 🔄 Implementing IndexedDB layer
+- 🚧 Waiting on API schema
+- ⏳ Testing
+```
+
+### Decision Gates with Success Criteria
+
+When recording a decision, include explicit success criteria - checkboxes that define how you'll know the decision was right. This makes decisions reviewable and auditable, not just historical records.
+
+Add a `## Success Criteria` section to decision notes:
+
+```markdown
+## Success Criteria
+- [ ] Offline tiles load within 2 seconds on 3G
+- [ ] Cache size stays under 50MB per user
+- [ ] No data loss when switching online/offline
+- [ ] Passes existing E2E test suite
+```
+
+When revisiting a decision later, check the boxes. If most are unchecked, the decision may need to be revisited or superseded.
+
+This also works in session notes for task completion:
+```
+## Done When
+- [ ] All tests pass
+- [ ] PR approved
+- [ ] Deployed to staging
+```
+
+### Synthesis Notes
+
+When exploring a complex topic across multiple files or domains, don't put everything in one massive analysis note. Instead, write individual analysis notes for each component, then create a **synthesis note** that links them together and draws conclusions.
+
+**Pattern**:
+```
+Analysis/Component A.md  ──┐
+Analysis/Component B.md  ──┼── Analysis/System X Synthesis.md
+Analysis/Component C.md  ──┘
+```
+
+**Synthesis note format**:
+```markdown
+---
+type: analysis
+project: "[[Claude/Projects/{project}]]"
+date: YYYY-MM-DD
+component: "{system} synthesis"
+synthesizes:
+  - "[[Claude/Analysis/Component A]]"
+  - "[[Claude/Analysis/Component B]]"
+  - "[[Claude/Analysis/Component C]]"
+tags:
+  - analysis
+  - synthesis
+---
+
+# {System} Synthesis
+
+## Individual Findings
+- **[[Claude/Analysis/Component A]]**: {key finding}
+- **[[Claude/Analysis/Component B]]**: {key finding}
+- **[[Claude/Analysis/Component C]]**: {key finding}
+
+## Cross-Cutting Patterns
+What patterns emerge when you look across all components together?
+
+## Conclusions
+What do the combined findings tell us that no single analysis could?
+
+## Recommendations
+What should we do based on the full picture?
+```
+
+This creates rich graph connections (the synthesis note links to all its sources) and produces better insights than a single monolithic analysis. Use this when:
+- Analyzing a bug that touches multiple modules
+- Reviewing architecture across services
+- Investigating performance across the stack
+- Any analysis spanning 3+ files or components
+
 ### Brag Capture (Obsidian only)
 
 Claude automatically captures significant accomplishments to help the user build their brag document for performance reviews. This runs passively alongside normal work.

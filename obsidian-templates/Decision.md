@@ -26,5 +26,9 @@ What was decided.
 - Impact on timeline
 - Impact on other systems
 
+## Success Criteria
+- [ ] How we'll know this decision was right
+- [ ] Measurable outcome
+
 ## Related
 - [[Claude/Projects/]]
