@@ -64,28 +64,29 @@ The project key is derived from the working directory:
 
 **Size guideline**: Keep workspace.md under 100 lines. It is read on every session start and consumes context budget. Store detailed project notes in each project's `project.md` instead. Archive completed initiatives periodically.
 
-## Auto-Activation (v1.4.0+)
+## Auto-Activation (v1.4.0+, enhanced in v2.0)
 
-Memory mode automatically activates for known projects. No command needed for projects you've used before.
+Memory mode automatically activates. With the Obsidian backend, it is **always on for every project** - no `/memory start` needed ever.
 
 ### How It Works
 
 On every session start:
-1. Derive project key from current working directory (e.g., `my_web_app` → `my-web-app`)
-2. Check if `~/.claude/projects/{project-key}/_session.json` exists
-3. **If exists**: Check `autoActivate` field in `_session.json`
-   - If `autoActivate` is `false` → Skip activation, normal mode
-   - Otherwise → Auto-activate memory mode:
-     - Set `active: true` in `_session.json`
-     - Update `lastActivity` timestamp
-     - Check and update branch if changed
-     - Read `_index.md` for context
-     - Silently resume - no announcement needed unless recovering from compaction
-4. **If not exists**: Normal mode - user can run `/memory start` to initialize
+1. Read `~/.claude/memory-config.json` to determine backend
+2. Derive project key from current working directory (e.g., `my_web_app` → `my-web-app`)
+
+**Obsidian backend** (`backend: "obsidian"`):
+3. Memory is always on. Check `.claude-state/{project-key}/session.json`
+4. **If found**: Read hot cache, resume seamlessly
+5. **If NOT found**: Auto-initialize this project (create project note, session note, state files). No user action needed.
+
+**Default backend** (`backend: "default"`):
+3. Check if `~/.claude/projects/{project-key}/_session.json` exists
+4. **If exists + `autoActivate` is not false**: Auto-activate, read `_index.md`
+5. **If not exists**: Normal mode - user runs `/memory start` to initialize
 
 ### Benefits
-- Once you've used `/memory start` on a project, it's always on
-- No need to remember to activate memory each session
+- Obsidian backend: truly always on, every project, no setup
+- Default backend: always on after first `/memory start`
 - Seamless continuity across terminal sessions
 - Branch switches are tracked automatically
 
@@ -794,12 +795,22 @@ The "Right Now" section must always reflect actual current state. The "Relations
 
 ### Auto-Activation (Obsidian)
 
-Same protocol as v1.x but with vault paths:
+When the Obsidian backend is configured, memory is **always on for every project**. No `/memory start` required.
+
 1. Read `~/.claude/memory-config.json` → get vault path + base path
-2. Derive project key from cwd
-3. Check `{CLAUDE_ROOT}/.claude-state/{project-key}/session.json`
-4. If found + `autoActivate: true` → activate, read hot cache
-5. If not found → normal mode (user runs `/memory start`)
+2. If `backend` = `"obsidian"` and vault path exists → memory is ON
+3. Derive project key from cwd (directory basename, lowercase, underscores to hyphens)
+4. Check `{CLAUDE_ROOT}/.claude-state/{project-key}/session.json`
+5. **If found** → read hot cache, resume seamlessly
+6. **If NOT found** → this is a new project, auto-initialize:
+   a. Create `.claude-state/{project-key}/` with `session.json` and `recent.md`
+   b. Create `Projects/{project-name}.md` if not exists
+   c. Create `Progress/{project-name}.md` if not exists
+   d. Create session note: `Sessions/{date} {project-name}.md`
+   e. Update `Workspace.md` with new project entry
+   f. Continue working — no user action needed
+
+The user never needs to run `/memory start` with the Obsidian backend. Every project is automatically tracked from the first session. `/memory start` still works for explicit re-initialization if needed.
 
 ### Breadcrumb (Obsidian)
 
