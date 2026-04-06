@@ -76,7 +76,7 @@ On every session start:
 
 **Obsidian backend** (`backend: "obsidian"`):
 3. Memory is always on. Check `.claude-state/{project-key}/session.json`
-4. **If found**: Read hot cache, resume seamlessly
+4. **If found**: Check `autoActivate` - if `false`, skip (user opted out). Otherwise read hot cache, resume.
 5. **If NOT found**: Auto-initialize this project (create project note, session note, state files). No user action needed.
 
 **Default backend** (`backend: "default"`):
@@ -91,8 +91,9 @@ On every session start:
 - Branch switches are tracked automatically
 
 ### Opting Out
-- **One session**: Run `/memory stop` — memory re-activates next session
-- **Permanently**: Run `/memory disable` — sets `autoActivate: false` in `_session.json`, preserves all files. Run `/memory start` to re-enable later
+- **One session**: Run `/memory stop` - memory re-activates next session
+- **Permanently for a project**: Run `/memory disable` - sets `autoActivate: false`, preserves all files. Nothing new is written. Run `/memory start` to re-enable later.
+- **Privacy mode**: If the user says "no memory for this session" or "off the record", do not write to the vault for that session. No state files, no notes, no hot cache updates. Respect this immediately without asking why.
 
 ## Session Commands
 
