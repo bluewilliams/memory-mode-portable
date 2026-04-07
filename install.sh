@@ -221,17 +221,44 @@ DASHEOF
         fi
     fi
 
-    # Check for Dataview
-    DATAVIEW_MISSING=true
-    if [ -d "$VAULT_PATH/.obsidian/plugins/dataview" ]; then
-        DATAVIEW_MISSING=false
+    # Auto-install Dataview plugin
+    if [ ! -d "$VAULT_PATH/.obsidian/plugins/dataview" ]; then
+        echo "  Installing Dataview plugin..."
+        mkdir -p "$VAULT_PATH/.obsidian/plugins/dataview"
+        if curl -sL "https://github.com/blacksmithgu/obsidian-dataview/releases/latest/download/manifest.json" -o "$VAULT_PATH/.obsidian/plugins/dataview/manifest.json" 2>/dev/null && \
+           curl -sL "https://github.com/blacksmithgu/obsidian-dataview/releases/latest/download/main.js" -o "$VAULT_PATH/.obsidian/plugins/dataview/main.js" 2>/dev/null && \
+           curl -sL "https://github.com/blacksmithgu/obsidian-dataview/releases/latest/download/styles.css" -o "$VAULT_PATH/.obsidian/plugins/dataview/styles.css" 2>/dev/null; then
+            # Enable Dataview with JS queries
+            cat > "$VAULT_PATH/.obsidian/plugins/dataview/data.json" << 'DVEOF'
+{"enableDataviewJs":true,"enableInlineDataviewJs":true,"inlineQueriesDisabled":false}
+DVEOF
+            # Register in community-plugins.json
+            if [ -f "$VAULT_PATH/.obsidian/community-plugins.json" ]; then
+                # Add dataview if not already present
+                if ! grep -q '"dataview"' "$VAULT_PATH/.obsidian/community-plugins.json" 2>/dev/null; then
+                    jq '. + ["dataview"]' "$VAULT_PATH/.obsidian/community-plugins.json" > "$VAULT_PATH/.obsidian/community-plugins.json.tmp" 2>/dev/null && \
+                    mv "$VAULT_PATH/.obsidian/community-plugins.json.tmp" "$VAULT_PATH/.obsidian/community-plugins.json"
+                fi
+            else
+                echo '["dataview"]' > "$VAULT_PATH/.obsidian/community-plugins.json"
+            fi
+            echo "    Dataview plugin installed and enabled"
+        else
+            echo "    Could not download Dataview (no internet?). Install manually:"
+            echo "    Obsidian → Settings → Community Plugins → Browse → Dataview"
+        fi
+    else
+        echo "  Dataview plugin already installed"
     fi
-    if $DATAVIEW_MISSING; then
-        echo "  RECOMMENDATION: Install the Dataview community plugin in Obsidian."
-        echo "  The dashboard and project notes include Dataview queries that won't"
-        echo "  render without it. Install via: Obsidian → Settings → Community Plugins → Dataview"
-        echo ""
+
+    # Check for Obsidian Sync
+    if [ -f "$VAULT_PATH/.obsidian/core-plugins.json" ]; then
+        if jq -e '.sync == true' "$VAULT_PATH/.obsidian/core-plugins.json" >/dev/null 2>&1; then
+            echo ""
+            echo "  NOTE: Obsidian Sync detected. Claude's writes will sync automatically."
+        fi
     fi
+    echo ""
 fi
 
 # ─── Write memory-config.json ────────────────────────────────────────
@@ -377,6 +404,77 @@ if [ ! -f "$CLAUDE_DIR/user/preferences.md" ]; then
 EOF
 fi
 
+# ─── Auto-Save Hooks ─────────────────────────────────────────────────
+
+echo ""
+echo "Installing auto-save hooks..."
+HOOKS_DIR="$CLAUDE_DIR/hooks"
+STATE_DIR="$CLAUDE_DIR/.memory-hooks"
+mkdir -p "$HOOKS_DIR"
+mkdir -p "$STATE_DIR"
+
+cp "$SCRIPT_DIR/hooks/memory-common.sh" "$HOOKS_DIR/memory-common.sh"
+cp "$SCRIPT_DIR/hooks/memory-tracker.sh" "$HOOKS_DIR/memory-tracker.sh"
+cp "$SCRIPT_DIR/hooks/memory-nudge.sh" "$HOOKS_DIR/memory-nudge.sh"
+cp "$SCRIPT_DIR/hooks/memory-precompact.sh" "$HOOKS_DIR/memory-precompact.sh"
+chmod +x "$HOOKS_DIR"/*.sh
+
+# Initialize state file
+echo '{"edits":0,"commits":0,"files_changed":[],"last_commit":"","last_nudge":0}' > "$STATE_DIR/activity.json"
+
+SETTINGS_FILE="$CLAUDE_DIR/settings.json"
+if [ ! -f "$SETTINGS_FILE" ]; then
+    cat > "$SETTINGS_FILE" << 'HOOKEOF'
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/memory-tracker.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/memory-nudge.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/memory-precompact.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+HOOKEOF
+    echo "  Auto-save hooks installed and configured"
+else
+    # Check if hooks already configured
+    if jq -e '.hooks' "$SETTINGS_FILE" > /dev/null 2>&1; then
+        echo "  Hook scripts updated (settings.json already has hooks configured)"
+    else
+        echo "  Hook scripts installed to ~/.claude/hooks/"
+        echo ""
+        echo "  NOTE: Your settings.json exists but has no hooks section."
+        echo "  Run ./hooks/install-hooks.sh for merge instructions, or add manually:"
+        echo "  See hooks/install-hooks.sh for the JSON to add."
+    fi
+fi
+
 # ─── Summary ─────────────────────────────────────────────────────────
 
 echo ""
@@ -412,20 +510,16 @@ fi
 echo ""
 echo "Next steps:"
 if [ "$BACKEND" = "obsidian" ]; then
-    echo "  1. Open your vault in Obsidian (if not already open)"
-    echo "  2. Enable Templates core plugin → set folder to ${BASE_PATH:+$BASE_PATH/}_Templates"
-    echo "  3. Install Dataview community plugin (for dashboard queries)"
-    echo "  4. Edit People/Your Name.md with your info"
-    echo "  5. Install auto-save hooks (recommended): ./hooks/install-hooks.sh"
-    echo "  6. Open any project and run: /memory start"
+    echo "  1. Open your vault in Obsidian and edit People/Your Name.md with your info"
+    echo "  2. That's it. Memory is always on. Just start working."
+    echo ""
+    echo "  Optional: Enable Templates core plugin (Settings → Core Plugins → Templates)"
+    echo "            Set template folder to: ${BASE_PATH:+$BASE_PATH/}_Templates"
 else
     echo "  1. Edit ~/.claude/user/profile.md with your info"
-    echo "  2. Install auto-save hooks (recommended): ./hooks/install-hooks.sh"
-    echo "  3. Open any project and run: /memory start"
-    echo "  4. After first use, memory auto-activates for that project"
+    echo "  2. Open any project and start working. Memory is always on."
 fi
 echo ""
 echo "To switch backends later, edit ~/.claude/memory-config.json"
 echo "To migrate existing memories to Obsidian: ./migrate-to-obsidian.sh"
-echo ""
 echo "To update later, pull the latest and re-run this script."
