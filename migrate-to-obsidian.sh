@@ -73,6 +73,12 @@ mkdir -p "$CLAUDE_ROOT"/People
 
 # ─── Helper Functions ─────────────────────────────────────────────────
 
+# Strip ANSI escape codes from text (terminal color output)
+strip_ansi() {
+    sed 's/\x1b\[[0-9;]*m//g; s/\[38;5;[0-9]*m//g; s/\[0m//g; s/\[1m//g' | \
+    sed '/^───/d; /^   *│/d; /^STDIN/d; /^ *$/N; /^\n$/d'
+}
+
 # Convert a project key to a human-readable name
 # e.g., "memory-mode-portable" → "memory-mode-portable"
 # e.g., "-Users-blue-workspace-my-app" → "my-app" (strip path-based keys)
@@ -149,7 +155,7 @@ for project_dir in "$PROJECTS_DIR"/*/; do
         if [ ! -f "$project_file" ]; then
             title=$(get_title "$project_dir/project.md")
             # Read existing content (skip the first H1 line)
-            body=$(sed '1{/^# /d;}' "$project_dir/project.md")
+            body=$(sed '1{/^# /d;}' "$project_dir/project.md" | strip_ansi)
 
             # Try to extract fields from existing content
             project_path=$(grep -m1 "^\*\*Path\*\*:" "$project_dir/project.md" 2>/dev/null | sed 's/.*: *//' || true)
@@ -210,7 +216,7 @@ EOF
             if [ ! -f "$dest_path" ]; then
                 title=$(get_title "$decision_file")
                 [ "$title" = "Untitled" ] && title="$description"
-                body=$(sed '1{/^# /d;}' "$decision_file")
+                body=$(sed '1{/^# /d;}' "$decision_file" | strip_ansi)
                 extra_tags=$(infer_tags "$decision_file")
 
                 cat > "$dest_path" << EOF
@@ -255,7 +261,7 @@ EOF
             if [ ! -f "$dest_path" ]; then
                 title=$(get_title "$analysis_file")
                 [ "$title" = "Untitled" ] && title="Analysis: $readable"
-                body=$(sed '1{/^# /d;}' "$analysis_file")
+                body=$(sed '1{/^# /d;}' "$analysis_file" | strip_ansi)
                 extra_tags=$(infer_tags "$analysis_file")
 
                 # Try to extract original path
@@ -395,7 +401,7 @@ EOF
             if [ ! -f "$dest_path" ]; then
                 title=$(get_title "$sa_file")
                 [ "$title" = "Untitled" ] && title="$sa_task"
-                body=$(sed '1{/^# /d;}' "$sa_file")
+                body=$(sed '1{/^# /d;}' "$sa_file" | strip_ansi)
 
                 # Try to extract agent type
                 agent_type=$(grep -m1 "^\*\*Agent\*\*:" "$sa_file" 2>/dev/null | sed 's/.*: *//' || echo "unknown")
@@ -490,7 +496,7 @@ if [ -f "$CLAUDE_DIR/user/profile.md" ]; then
         role=$(grep -m1 "^\- \*\*Role\*\*:" "$CLAUDE_DIR/user/profile.md" 2>/dev/null | sed 's/.*: *//' || true)
         company=$(grep -m1 "^\- \*\*Company\*\*:" "$CLAUDE_DIR/user/profile.md" 2>/dev/null | sed 's/.*: *//' || true)
         team=$(grep -m1 "^\- \*\*Team\*\*:" "$CLAUDE_DIR/user/profile.md" 2>/dev/null | sed 's/.*: *//' || true)
-        body=$(sed '1{/^# /d;}' "$CLAUDE_DIR/user/profile.md")
+        body=$(sed '1{/^# /d;}' "$CLAUDE_DIR/user/profile.md" | strip_ansi)
 
         cat > "$dest_path" << EOF
 ---
