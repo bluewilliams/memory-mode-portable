@@ -337,7 +337,7 @@ Drop files into `Claude/Resources/` (PDFs, images, documents, code snippets). Te
 ### After Install (Obsidian)
 
 1. **Open your vault in Obsidian** - you should see a `Claude/` folder with your dashboard, templates, and project structure.
-2. **Verify the dashboard**: Open `Claude/_Dashboard.md` (or `!Dashboard` at vault root) - you should see live tables. Dataview is auto-installed.
+2. **Open `!Dashboard`** - this is created at your vault root and sorts to the top of the file explorer. It's your single pane of glass for everything Claude is tracking: active sessions, projects, recent decisions, brags, and more. Switch to **Reading View** (`Cmd+E` / `Ctrl+E`) to see the live Dataview tables.
 3. **Optional**: Enable the Templates core plugin (Settings -> Core Plugins -> Templates) and set the template folder to `Claude/_Templates` for easy note creation.
 
 ### Recommended Plugins
