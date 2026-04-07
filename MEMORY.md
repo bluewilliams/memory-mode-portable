@@ -818,6 +818,33 @@ Keep entries brief - one line per dead end:
 - Polling approach for live updates - too much battery drain, switched to WebSocket
 ```
 
+### Cross-Project Awareness
+
+The session's starting directory determines the primary project, but work often spans multiple projects. Claude must route notes to the correct project regardless of which terminal the session started in.
+
+**Rules**:
+
+1. **Session note stays with the primary project** - the one the terminal is open in. But add a `## Also Touched` section listing other projects that came up:
+   ```
+   ## Also Touched
+   - [[Claude/Projects/userlocationapipoc]] - discussed CosmosDB throughput implications
+   - [[Claude/Projects/bedtime-buddy]] - quick question about Stripe webhooks
+   ```
+
+2. **Decisions go to the project they're about, not the session's project**. If you're in korweb-companion-app but make a decision about userlocationapipoc's database, the decision note gets `project: "[[Claude/Projects/userlocationapipoc]]"`. The session note links to it for continuity.
+
+3. **Analysis notes go to the project being analyzed**. Same principle - attribute to what was analyzed, not where the terminal was.
+
+4. **Cross-project links are valuable**. When work in one project affects another, link them explicitly:
+   ```
+   ## Related
+   - [[Claude/Projects/korweb-companion-app]] - this change affects the field app's location posting
+   ```
+
+5. **Detect project context shifts**. If the user `cd`s to a different repo, starts discussing a different codebase, or mentions a Jira ticket from another project, recognize the shift and route notes accordingly. You don't need to announce this - just file things in the right place.
+
+6. **Hot cache updates for the primary project only**. Don't update other projects' hot caches from this session - let their own sessions handle that. But do update the primary project's hot cache "Also Touched" or "Related Projects" section if cross-project work happened.
+
 ### Vault Maintenance
 
 Claude sessions should keep the vault tidy. This isn't a separate task - it's a quick sweep done naturally during session work.
