@@ -818,6 +818,52 @@ Keep entries brief - one line per dead end:
 - Polling approach for live updates - too much battery drain, switched to WebSocket
 ```
 
+### Vault Maintenance
+
+Claude sessions should keep the vault tidy. This isn't a separate task - it's a quick sweep done naturally during session work.
+
+#### On Session Start (lightweight, <30 seconds)
+
+After reading the hot cache and before starting work, do a quick check:
+
+1. **Stale sessions**: Grep `Sessions/` for `status: active` notes from previous days. Mark them `status: completed`.
+2. **Current project note exists**: If `Projects/{project-name}.md` is missing, create it (the always-on protocol handles this, but verify).
+3. **Hot cache freshness**: Check the `Last verified:` timestamp. If stale (>24h), update the "Right Now" section.
+
+#### On Memory Checkpoint (when hooks nudge)
+
+In addition to updating session/progress notes:
+
+1. **Broken wikilinks in current session note**: Scan for `[[Claude/...]]` links pointing to notes that don't exist. Either create stub notes or remove the broken links.
+2. **ANSI/formatting artifacts**: If any note you're reading has terminal escape codes (`[38;5;`, `[0m`, etc.), clean them on the spot.
+
+#### Weekly Maintenance (do this when you notice it's been a while)
+
+When you detect it's been 7+ days since the last maintenance (check `.claude-state/last-maintenance` file):
+
+1. **Orphan check**: Scan `Decisions/` and `Analysis/` for notes whose `project:` wikilink points to a non-existent project note. Create the missing project note or fix the link.
+2. **Stale progress notes**: Read `Progress/` notes. If "Active Work" items are all completed, clean up.
+3. **Workspace sync**: Check if `Workspace.md` project registry matches actual `Projects/` folder contents. Add missing projects.
+4. **Stub cleanup**: Grep for `status: stub` notes. If you have context to fill them in, do it. If they're old and irrelevant, note that in the stub.
+5. **Write timestamp**: Write current date to `.claude-state/last-maintenance`.
+
+```bash
+# Quick maintenance commands:
+# Find stale active sessions
+Grep: pattern="status: active" path="{vault}/Sessions/"
+# Find orphan project references
+Grep: pattern="project:.*\[\[Claude/Projects/" path="{vault}/Decisions/"
+# Find ANSI artifacts
+Grep: pattern="\[38;5;" path="{vault}"
+# Find stub notes
+Grep: pattern="status: stub" path="{vault}"
+```
+
+#### Rules
+- **Fix silently**: Don't announce routine cleanup unless something significant is found.
+- **Don't reorganize without reason**: If a note is messy but readable, leave it. Only clean up things that break navigation, rendering, or retrieval.
+- **Never delete user content**: If you're unsure whether something is user-created or an artifact, leave it and ask.
+
 ### Auto-Activation (Obsidian)
 
 When the Obsidian backend is configured, memory is **always on for every project**. No `/memory start` required.
