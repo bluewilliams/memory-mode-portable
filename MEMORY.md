@@ -759,8 +759,8 @@ Use the cheapest retrieval tier that answers your question. **Never search the w
 #### Tier 1: Hot Cache (read ALWAYS on session start + after compaction)
 **File**: `.claude-state/{project-key}/recent.md`
 **Cost**: 1 file read, ~50 lines
-**Contains**: Current task, last 10 notes, blockers, quick links, relationship context
-**Answers**: "What am I doing? What just happened? How do I work with this person?"
+**Contains**: Current task, last 10 notes, blockers, quick links, related projects, relationship context
+**Answers**: "What am I doing? What just happened? How do I work with this person? What other projects are relevant?"
 
 #### Tier 2: Warm Context (read when hot cache isn't enough)
 **Files**: Active session note + Progress note + Project note
@@ -794,7 +794,29 @@ Update `.claude-state/{project-key}/recent.md` after:
 - Before compaction (critical)
 - On session end
 
-The "Right Now" section must always reflect actual current state. The "Relationship Context" section carries forward across sessions.
+The "Right Now" section must always reflect actual current state. Include a `Last verified:` timestamp so future sessions know how fresh the cache is.
+
+**Required hot cache sections**:
+- **Right Now**: Current task, blockers, next step (compact markers)
+- **Recent Notes**: Last 10 touched notes with type and summary
+- **Quick Links**: Direct paths to active session, progress, project notes
+- **Related Projects**: Other projects that share context with this one (e.g., "userlocationapipoc receives data from korweb-companion-app"). This saves a Workspace.md read when cross-project context is needed.
+- **Relationship Context**: Interpersonal notes that carry forward across sessions
+
+### Tracking What Didn't Work
+
+Session notes should include a `## What Didn't Work` section documenting approaches that were tried and abandoned, with brief reasons. This is critical for avoiding repeated dead ends across sessions. When starting a new approach to a problem, grep session notes for "What Didn't Work" to check if it's been tried before:
+
+```
+Grep: pattern="What Didn't Work" path="{vault}/Sessions/" glob="*{project}*"
+```
+
+Keep entries brief - one line per dead end:
+```
+## What Didn't Work
+- localStorage for token storage - XSS vulnerable, switched to httpOnly cookies
+- Polling approach for live updates - too much battery drain, switched to WebSocket
+```
 
 ### Auto-Activation (Obsidian)
 

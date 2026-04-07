@@ -27,6 +27,10 @@ None.
 ## Decisions Made
 - (none yet)
 
+## What Didn't Work
+Approaches tried and abandoned this session, with brief reasons why. This
+helps future sessions avoid repeating dead ends.
+
 ## Notes
 
 ## Key Context for Recovery
