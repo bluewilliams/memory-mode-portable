@@ -756,6 +756,55 @@ When the user shares a file or tells you about a file they've added to the vault
 
 Use the cheapest retrieval tier that answers your question. **Never search the whole vault when the hot cache suffices.**
 
+#### Tier 0: Global Index (read on session start, before hot cache)
+**File**: `.claude-state/global-index.md`
+**Cost**: 1 file read, ~100 lines max
+**Contains**: Cross-project topic map, all active initiatives, recent activity across all projects, people context
+**Answers**: "Do I have notes about this topic? Which project? What's happening across all projects?"
+
+This is the vault's card catalog. It lets Claude detect relevant context instantly when the user mentions a topic, without searching. Read this FIRST, then the project-specific hot cache.
+
+**Format**:
+```markdown
+# Global Index
+Last updated: 2026-04-07T02:00:00Z
+
+## Topic Map
+Quick lookup: topic → project + note pointers. One line per topic.
+CosmosDB → userlocationapipoc: Decisions/2026-04-03 Throughput, Analysis/Load Testing
+HEIC → korweb-companion-app: Decisions/2026-01-20 HEIC sync, Decisions/2026-01-21 preprocessor
+Stripe → bedtime-buddy: Sessions/2026-04-05 (webhook hardening)
+Obsidian → memory-mode-portable: Decisions/2026-04-05 Obsidian backend
+location permissions → korweb-companion-app: KA-6174, Sessions/2026-04-06
+load testing → userlocationapipoc: Analysis/Cosmos DB Load Testing, Analysis/Soak Test
+
+## Active Initiatives
+CosmosDB production readiness → userlocationapipoc (blocked on PR process)
+Bedtime Buddy ad launch → bedtime-buddy (checklist complete, planning campaigns)
+Android prominent disclosure → korweb-companion-app (KA-6174 in progress)
+Memory mode v2.0 → memory-mode-portable (shipped, polishing)
+
+## Recent Across All Projects
+| Date | Project | What |
+|------|---------|------|
+| 2026-04-07 | userlocationapipoc | Soak test HPA analysis |
+| 2026-04-06 | korweb-companion-app | KA-6174 location permissions |
+| 2026-04-05 | memory-mode-portable | Shipped v2.0 Obsidian backend |
+| 2026-04-05 | bedtime-buddy | Pre-ad checklist, campaign drafts |
+
+## People
+Blue Williams → People/Blue Williams.md (principal eng, KorTerra, mobile team)
+Natalie → CTO, Blue's skip-level (1:1s)
+```
+
+**Maintenance**: Update the global index when:
+- A new project is initialized
+- A new topic/domain emerges that spans potential cross-project interest
+- Active initiatives change status
+- A session touches a project (add to "Recent Across All Projects", keep last 20)
+
+The topic map is the most important section. It's what lets Claude say "oh, we have notes about CosmosDB" without searching. Keep entries to one line each. Only add topics that are likely to come up again - not every minor detail.
+
 #### Tier 1: Hot Cache (read ALWAYS on session start + after compaction)
 **File**: `.claude-state/{project-key}/recent.md`
 **Cost**: 1 file read, ~50 lines
@@ -772,7 +821,7 @@ Use the cheapest retrieval tier that answers your question. **Never search the w
 **Cost**: Multiple reads
 **Answers**: "What did we decide about X last month?"
 
-**Decision flow**: Hot cache → sufficient? Done. Need more? → Warm context → sufficient? Done. Need history? → Cold search.
+**Decision flow**: Global index → Hot cache → sufficient? Done. Need more? → Warm context → sufficient? Done. Need history? → Cold search.
 
 ### Search Methods (ordered fastest to slowest)
 
@@ -931,11 +980,14 @@ The `obsidian` suffix tells recovery logic which backend to use.
 ### Compaction Recovery (Obsidian)
 
 After detecting missing breadcrumb:
-1. Read `.claude-state/{project-key}/recent.md` (hot cache — Tier 1)
-2. Read `People/_Preferences.md` (user preferences)
-3. Read the active session note referenced in hot cache (Tier 2, if needed)
-4. Read the project note if deeper context needed (Tier 2)
-5. Resume seamlessly
+1. Read `.claude-state/global-index.md` (Tier 0 - cross-project awareness)
+2. Read `.claude-state/{project-key}/recent.md` (Tier 1 - project hot cache)
+3. Read `People/_Preferences.md` (user preferences + relationship context)
+4. Read the active session note referenced in hot cache (Tier 2, if needed)
+5. Read the project note if deeper context needed (Tier 2)
+6. Resume seamlessly
+
+On session start (no compaction), the same read order applies but steps 4-5 are optional if the hot cache is sufficient.
 
 ### Sub-Agent Protocol (Obsidian)
 
