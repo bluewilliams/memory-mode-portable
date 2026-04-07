@@ -675,10 +675,12 @@ Stub: {one-line summary of what this decision was about, to be expanded later}
 |-----------|--------|----------------|
 | Decision | `Decisions/` | `{YYYY-MM-DD} {descriptive title}.md` |
 | Analysis | `Analysis/` | `{descriptive title}.md` |
-| Session | `Sessions/` | `{YYYY-MM-DD} {project-name}.md` |
+| Session | `Sessions/` | `{YYYY-MM-DD} {project-name}.md` (one per project per day) |
 | Progress | `Progress/` | `{project-name}.md` (one per project, long-lived) |
 | Resource | `Resources/References/` | `{descriptive title}.md` |
 | Sub-Agent | `Sub-Agents/` | `{YYYY-MM-DD} {HHMMSS} {task-name}.md` |
+
+**Session note date rule**: Always use today's date. If a session note exists from a previous day, do NOT amend it - create a new one with today's date. Each day gets its own note. This keeps the dashboard's "Active Sessions" and "Recently Changed" views accurate and prevents confusion about when work happened. Previous session notes are historical records; today's session note is the working document.
 
 ### Frontmatter Template
 
