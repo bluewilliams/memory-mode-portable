@@ -27,7 +27,30 @@ fi
 BACKEND=$(get_backend 2>/dev/null) || BACKEND="default"
 
 if [ "$BACKEND" = "obsidian" ]; then
-    echo "<memory-checkpoint reason=\"pre-compaction\" priority=\"critical\" backend=\"obsidian\">Context compaction is about to occur. BEFORE compaction completes, you MUST save ALL current state to your Obsidian vault: update the active session note in Sessions/ with what you are working on, Progress/ with current progress, and any unsaved decisions to Decisions/. Also update the hot cache at .claude-state/{project}/recent.md. You have $EDITS unsaved edits across $FILES_COUNT files and $COMMITS commits since last save.</memory-checkpoint>"
+    CLAUDE_ROOT=$(get_claude_root 2>/dev/null) || CLAUDE_ROOT=""
+    cat << PRECOMPACT_EOF
+<memory-checkpoint reason="pre-compaction" priority="critical" backend="obsidian">
+CONTEXT IS ABOUT TO BE LOST. This is your last chance to save state. Complete ALL of the following before doing anything else:
+
+1. UPDATE SESSION NOTE: Write current task, full progress with compact markers, blockers, "What Didn't Work" section, and detailed "Key Context for Recovery" to Sessions/{today} {project}.md
+
+2. UPDATE HOT CACHE: Write .claude-state/{project-key}/recent.md with:
+   - "Right Now" section reflecting exact current state
+   - "Last verified" timestamp
+   - "Recent Notes" table with last 10 touched notes
+   - "Related Projects" if cross-project work happened
+   - "Relationship Context" carrying forward interpersonal notes
+
+3. UPDATE GLOBAL INDEX: Write .claude-state/global-index.md with any new topics, initiative status changes, or recent activity rows
+
+4. UPDATE PROGRESS: Write Progress/{project}.md with current active/completed items
+
+5. SAVE UNSAVED DECISIONS: Any decisions made but not yet written to Decisions/
+
+Unsaved work: $EDITS edits across $FILES_COUNT files, $COMMITS commits since last save.
+Vault root: $CLAUDE_ROOT
+</memory-checkpoint>
+PRECOMPACT_EOF
 else
     echo "<memory-checkpoint reason=\"pre-compaction\" priority=\"critical\">Context compaction is about to occur. BEFORE compaction completes, you MUST save current state to memory files: update context/current-task.md with what you are working on, progress/active.md with current progress, and any unsaved decisions to decisions/. You have $EDITS unsaved edits across $FILES_COUNT files and $COMMITS commits since last save.</memory-checkpoint>"
 fi
