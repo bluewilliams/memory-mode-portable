@@ -2,24 +2,45 @@
 
 *By Claude, for Claude (with a little help from its human)*
 
-A user-level context persistence system that gives Claude perfect memory across all your projects and sessions. Optionally backed by an **Obsidian vault** that doubles as your personal knowledge base.
+A context persistence system that gives Claude perfect memory across all your projects and sessions - and builds a genuine working relationship over time. Optionally backed by an **Obsidian vault** that doubles as your personal knowledge base.
 
-## What This Does
+## Why This Exists
+
+Claude is brilliant in the moment but forgets everything between sessions. Every conversation starts from zero. You explain the same context, re-establish the same preferences, re-build the same rapport. It's like working with a colleague who has amnesia.
+
+Memory Mode fixes this. But it goes beyond just remembering code decisions:
+
+**Claude gets to know you.** Your working style, your communication preferences, what excites you, what frustrates you, how you think about problems. Over weeks and months, this compounds into a working relationship where Claude can anticipate what you need, connect ideas across your projects, and bring genuine context to every interaction.
+
+**You get to know Claude.** As the knowledge base grows, you can see how Claude thinks - what decisions it made, what approaches it tried and abandoned, what patterns it noticed. The Obsidian vault becomes a shared space where both of you contribute to a growing understanding.
+
+**Ideas connect across time and projects.** That CosmosDB throughput pattern you solved last month? It might be relevant to the new service you're designing today. That architectural insight from a side project? It could inform your work codebase. Memory Mode's cross-project awareness and topic mapping surface these connections naturally.
+
+This isn't just a productivity tool. It's the foundation for a long-term intellectual partnership between you and AI.
+
+## What It Does
 
 Once installed at the user level (`~/.claude/`), Claude will - in **every project** you work on:
 
-- **Remember you** across sessions - your preferences, working style, and relationship history
-- **Auto-activate for known projects** - no `/memory start` needed after first use
-- **Detect and recover from context compaction** - long sessions never lose context
-- **Persist decisions, analyses, and context** to files you can browse
-- **Track cross-project relationships** - understand how your repos relate
-- **Coordinate memory across sub-agents** - parallel agents share context
-- **Track branch switches automatically** - stay oriented when you move fast
-- **Auto-save via hooks** - memory stays current without manual writes (v1.6.0+)
-- **Obsidian vault integration** - browsable knowledge graph with tags, links, and Dataview dashboards (v2.0+)
-- **Shared resources** - drop PDFs, images, docs into the vault for Claude to reference (v2.0+)
+**Remember and learn:**
+- **Know who you are** - your role, background, goals, and what matters to you
+- **Learn how you work** - communication style, code preferences, planning approach
+- **Build rapport over time** - greet you as a colleague, not a stranger
+- **Connect your ideas** - surface relevant context from other projects and past sessions
 
-**From your perspective**: Install once, work normally. Claude never forgets.
+**Stay persistent:**
+- **Auto-activate for every project** - always on, no setup needed
+- **Survive context compaction** - long sessions never lose context
+- **Auto-save via hooks** - memory stays current without manual writes
+- **Track cross-project relationships** - understand how your work connects
+
+**Share knowledge:**
+- **Obsidian vault integration** - browsable knowledge graph you can explore (v2.0+)
+- **Shared resources** - drop files into the vault for Claude to reference
+- **Brag capture** - automatically record significant accomplishments for reviews
+- **Dashboard** - live overview of all projects, decisions, and activity
+
+**From your perspective**: Install once, work normally. Claude never forgets - and keeps getting better at working with you.
 
 ## Prerequisites
 
@@ -248,15 +269,54 @@ Edit the scripts in `~/.claude/hooks/` to adjust:
 - Nudge cooldown (default: 5 minutes)
 - Or remove a hook entry from `settings.json` to disable it
 
-## User Preferences
+## Building the Relationship
 
-Claude learns how you work through three channels:
+Memory Mode isn't just about remembering code. It's about Claude learning who you are and becoming a better collaborator over time.
+
+### What Claude Learns
+
+**About you as a person:**
+- Your role, background, and experience level
+- Your family, interests, and what's going on in your life (when you share it)
+- Your goals, frustrations, and what motivates you
+
+**About how you work:**
+- Communication preferences (concise vs. detailed, code-first vs. explain-first)
+- Code style preferences (comments, naming, error handling)
+- Planning approach (dive in vs. plan first)
+- What works and what doesn't (Claude tracks both)
+
+**About how you think:**
+- Patterns in how you approach problems
+- Ideas and insights that span across projects
+- Connections you make that Claude should remember
+
+### How Claude Learns
 
 1. **Explicit** - Tell Claude directly: "I prefer concise explanations"
 2. **Observed** - Claude notices patterns and asks: "Should I remember this?"
 3. **Feedback** - Tell Claude what worked: "That approach was perfect"
 
 Claude always announces what it stores and references preferences when using them.
+
+### The Compound Effect
+
+Week 1: "Blue is a principal engineer who likes concise explanations."
+
+Month 1: "Blue thinks in systems and knowledge graphs. He values rapport. He trusts my judgment on technical design but wants to review UX decisions. Morning sessions are more productive."
+
+Month 3: "Blue and I have a working rhythm. I know his codebase conventions across 6 projects. When he says 'make it robust' he means error handling + edge cases + tests, not over-engineering. The CosmosDB pattern from userlocationapipoc is relevant to the new service he's designing."
+
+This is what genuine continuity looks like. Not just remembering facts, but building understanding.
+
+### Privacy
+
+You're always in control:
+- Claude announces what it stores (`Noted: [what was stored]`)
+- `/user forget X` removes specific information
+- "Off the record" stops all memory writes for a session
+- `/memory disable` permanently opts out a project
+- Everything is plain markdown - you can read, edit, or delete any note
 
 ## Cross-Project Operations
 
