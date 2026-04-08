@@ -77,52 +77,23 @@ cd memory-mode-portable
 ```
 
 The interactive installer handles everything in one run:
-1. Choose a storage backend: **Default** (flat files) or **Obsidian** (knowledge base)
-2. If Obsidian: auto-detect your existing vaults, set up folder structure, install Dataview plugin
+1. Auto-detect your existing Obsidian vaults, let you pick one or create a new one
+2. Set up the `Claude/` folder structure, templates, dashboard, and Dataview plugin
 3. Install auto-save hooks (track edits/commits, nudge Claude to save state)
 4. Create `~/.claude/memory-config.json`, `MEMORY.md`, `USER.md`, `CLAUDE.md`
 5. Create default user profile and preferences for you to fill in
 
-No separate hook install step. No manual plugin setup. One script does it all.
+No separate steps. One script does it all.
 
 **Important**: The installer creates a `CLAUDE.md` file at `~/.claude/CLAUDE.md`. This is the entry point that tells Claude to load memory mode. It contains `@MEMORY.md` and `@USER.md` references that pull in the full instruction set. If you already have a `CLAUDE.md`, the installer will check it has these references and offer to add them.
 
 ### Manual Install
 
-If you prefer to set things up yourself:
-
-1. **Copy instruction files to user-level config:**
-   ```bash
-   cp MEMORY.md ~/.claude/MEMORY.md
-   cp USER.md ~/.claude/USER.md
-   ```
-
-2. **Create required directories:**
-   ```bash
-   mkdir -p ~/.claude/user ~/.claude/projects
-   ```
-
-3. **Set up CLAUDE.md** (this is what makes Claude load memory mode):
-   ```bash
-   # New installation:
-   cp CLAUDE.md.example ~/.claude/CLAUDE.md
-
-   # Existing CLAUDE.md - add these lines:
-   # @MEMORY.md
-   # @USER.md
-   # (and copy the SESSION START PROTOCOL from CLAUDE.md.example)
-   ```
-
-4. **Set up workspace.md:**
-   ```bash
-   cp workspace.md.example ~/.claude/workspace.md
-   ```
-
-5. **Create the backend config:**
-   ```bash
-   cp memory-config.json.example ~/.claude/memory-config.json
-   # Edit to set backend: "default" or "obsidian"
-   ```
+If you prefer to set things up yourself, see the installer script for the full sequence. The key files:
+- `~/.claude/MEMORY.md` - Memory protocol instructions (Claude reads this)
+- `~/.claude/USER.md` - User preference system
+- `~/.claude/CLAUDE.md` - Entry point with `@MEMORY.md` and `@USER.md` references
+- `~/.claude/memory-config.json` - Vault path and backend config
 
 ### Updating
 
@@ -154,94 +125,61 @@ See [Auto-Save Hooks](#auto-save-hooks) for details on what the hooks do.
 
 ## How It Works
 
-### User-Level Architecture
+### Architecture
 
-Everything lives under `~/.claude/` - one install covers all projects:
+Claude's memory lives in a `Claude/` subfolder inside your Obsidian vault, alongside your existing notes. Config and instructions live at `~/.claude/`:
 
 ```
 ~/.claude/
-├── CLAUDE.md                       # Entry point (references @MEMORY.md, @USER.md)
-├── MEMORY.md                       # Memory mode instructions
-├── USER.md                         # User preference system
-├── workspace.md                    # Cross-project map
-├── user/                           # Your global profile
-│   ├── profile.md                  #   Identity & background
-│   ├── preferences.md              #   Communication & workflow preferences
-│   ├── communication.md            #   Style preferences
-│   ├── technical.md                #   Skills & interests
-│   ├── observations.md             #   Patterns noticed (transparent)
-│   └── feedback.md                 #   What works/doesn't work
-└── projects/                       # Per-project memory (auto-created)
-    └── {project-key}/
-        ├── _index.md               #   Quick lookup index
-        ├── _session.json           #   Session state
-        ├── decisions/              #   Major decisions made
-        ├── analysis/               #   File/component analyses
-        ├── context/                #   Current task & blockers
-        ├── progress/               #   Work tracking
-        ├── subagent/               #   Sub-agent outputs
-        └── project.md              #   Project-specific context
+├── CLAUDE.md              # Entry point (loads @MEMORY.md, @USER.md)
+├── MEMORY.md              # Memory protocol instructions
+├── USER.md                # User preference system
+├── memory-config.json     # Vault path and backend config
+└── hooks/                 # Auto-save hook scripts
+
+Your Obsidian Vault/
+├── Your existing folders...
+└── Claude/                # All Claude memory
+    ├── .claude-state/     #   Machine state (hot cache, global index)
+    ├── _Dashboard.md      #   Dataview-powered overview
+    ├── _Templates/        #   Note templates
+    ├── Projects/          #   One note per project
+    ├── Decisions/         #   Decision records with tags & links
+    ├── Analysis/          #   Code/component analyses
+    ├── Sessions/          #   Session logs (one per project per day)
+    ├── Progress/          #   Work tracking per project
+    ├── Resources/         #   Shared files & reference notes
+    ├── People/            #   User profile & preferences
+    ├── Sub-Agents/        #   Sub-agent outputs
+    ├── Brag/              #   Auto-captured accomplishments
+    └── Workspace.md       #   Cross-project map
 ```
 
-### Why User-Level?
+### Why This Architecture?
 
-- **Install once, works everywhere** - no per-project setup needed
-- **No permission prompts** - Claude always has access to `~/.claude/`
-- **Clean project directories** - no `.claude/` folders in your repos
-- **Seamless project switching** - context available instantly
-- **Cross-project awareness** - reference related projects easily
-
-### Project Key Derivation
-
-Your directory name becomes the project key:
-- `~/workspace/my_cool_app` → `my-cool-app`
-- `~/projects/AuthService` → `authservice`
-
-Algorithm: directory name → lowercase → underscores to hyphens
-
-**Note**: Only the directory basename is used. If you have identically named directories in different paths (e.g., `~/work/api` and `~/personal/api`), they will share memory. Rename one to avoid collisions.
+- **Always on** - every project auto-initializes, no setup needed
+- **One graph** - Claude's notes and your notes share the same Obsidian graph
+- **Cross-linking** - Claude's decisions can link to your Jira notes and vice versa
+- **Clean repos** - no `.claude/` folders in your project directories
+- **Tiered retrieval** - global index → hot cache → warm context → cold search
 
 ## Usage
 
-### First Time in a Project
-
-```
-/memory start
-```
-
-Claude creates `~/.claude/projects/{project-key}/` and begins tracking.
-
-### Every Time After
-
-Memory auto-activates. Just start working.
+Just start working. Memory is always on. Every project auto-initializes on first session.
 
 ### Commands
 
 | Command | What it does |
 |---------|-------------|
-| `/memory start` | Initialize memory for a new project |
-| `/memory stop` | Deactivate for this session (re-activates next session) |
-| `/memory disable` | Permanently disable auto-activation (preserves files) |
+| `/memory stop` | Pause for this session (re-activates next session) |
+| `/memory disable` | Permanently opt out a project (preserves files) |
 | `/memory status` | Show current memory state |
-| `/memory rebuild` | Regenerate index from files (recovery) |
 | `/workspace` | Show all projects and relationships |
-| `/user` | Show your profile |
-| `/user update` | Update preferences |
-| `/user forget X` | Remove specific information |
-| `/user export` | Export profile for backup |
-| `/user import` | Import profile from backup |
+| "off the record" | Stop all memory writes for this session, no questions asked |
 
-### Compaction Detection
+### How Recovery Works
 
-Claude writes a timestamp breadcrumb at the end of each response. If it's missing at the start of the next response, compaction occurred and Claude reads the index to recover context automatically.
-
-### Sub-Agent Integration
-
-When Claude spawns sub-agents (via Task tool), they automatically:
-- Read project context before starting work
-- Write findings to `subagent/` with unique filenames
-- Avoid conflicts when running in parallel
-- Get consolidated by the parent agent into the main index
+Claude writes a breadcrumb at the end of each response. If it's missing at the start of the next response, compaction occurred and Claude recovers automatically: reads the global index, hot cache, preferences, and resumes seamlessly.
 
 ## Auto-Save Hooks
 
@@ -409,20 +347,6 @@ Drop files into `Claude/Resources/` (PDFs, images, documents, code snippets). Te
 | **Graph Analysis** | Community | Enhanced graph view with clustering |
 | **Tag Wrangler** | Community | Bulk rename/merge tags |
 
-### Migrating Existing Memories
-
-If you're upgrading from v1.x with existing memory files:
-
-```bash
-./migrate-to-obsidian.sh
-```
-
-This converts all files in `~/.claude/projects/` to Obsidian format with frontmatter, tags, and wikilinks. Original files are preserved.
-
-### Switching Backends
-
-Edit `~/.claude/memory-config.json` and change `backend` to `"default"` or `"obsidian"`. Both backends can coexist - switching doesn't delete anything.
-
 ### Brag Capture (Auto Accomplishment Tracking)
 
 Claude automatically detects significant accomplishments during your work sessions and captures them as brag entries. These are designed for performance review preparation.
@@ -444,36 +368,13 @@ See [OBSIDIAN-DESIGN.md](OBSIDIAN-DESIGN.md) for the full architectural design i
 | Memory not activating | Check `@MEMORY.md` is in `~/.claude/CLAUDE.md` |
 | Lost context after long session | Normal - Claude recovers automatically. Try `/memory rebuild` if issues persist |
 | Disable memory for a project | `/memory disable` (preserves files, stops auto-activation) |
-| Start fresh in a project | `rm -rf ~/.claude/projects/{project-key}/` then `/memory start` |
+| Start fresh in a project | Delete the project note in `Claude/Projects/` and `.claude-state/{project-key}/` |
 | Two projects sharing memory | Same directory name in different paths - rename one directory |
-| Index seems wrong | `/memory rebuild` |
-| Sub-agents not using memory | Ensure memory is active (`/memory status`) |
-| Claude not recognizing you | Check SESSION START PROTOCOL in `~/.claude/CLAUDE.md` and that `~/.claude/user/profile.md` exists |
-| Workspace not showing projects | Projects register on first `/memory start`. Or edit `~/.claude/workspace.md` manually |
-| Dashboard shows "dataview" errors | Install the Dataview community plugin in Obsidian |
+| Claude not recognizing you | Check `~/.claude/CLAUDE.md` has `@MEMORY.md` and `@USER.md` references |
+| Dashboard shows "dataview" errors | Restart Obsidian - Dataview is auto-installed but may need a restart |
 | Claude writing to wrong location | Check `~/.claude/memory-config.json` - verify `vaultPath` and `basePath` |
-| Obsidian not showing Claude folder | The vault path in config may be wrong. Verify with `cat ~/.claude/memory-config.json` |
-| Hooks not firing | Run `./hooks/install-hooks.sh` and check `~/.claude/settings.json` has the hooks config |
-| Migration missed some projects | Some projects may only have session IDs, not memory files. Re-run `/memory start` in those projects |
-
-## Migration from v1.2.x (Project-Level Storage)
-
-If you have existing `.claude/memory/` directories inside projects:
-
-```bash
-# 1. Derive project key (e.g., ~/workspace/my_app → my-app)
-mkdir -p ~/.claude/projects/my-app
-
-# 2. Move contents
-mv ~/workspace/my_app/.claude/memory/* ~/.claude/projects/my-app/
-
-# 3. Update _session.json with projectKey and projectPath fields
-
-# 4. Register in ~/.claude/workspace.md
-
-# 5. Clean up (optional)
-rm -rf ~/workspace/my_app/.claude/
-```
+| Obsidian not showing Claude folder | Vault path in config may be wrong. Run `cat ~/.claude/memory-config.json` |
+| Hooks not firing | Run `./hooks/install-hooks.sh` and check `~/.claude/settings.json` has hooks config |
 
 ## Version History
 
