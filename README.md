@@ -14,7 +14,7 @@ Memory Mode fixes this. But it goes beyond just remembering code decisions:
 
 **You get to know Claude.** As the knowledge base grows, you can see how Claude thinks - what decisions it made, what approaches it tried and abandoned, what patterns it noticed. The Obsidian vault becomes a shared space where both of you contribute to a growing understanding.
 
-**Ideas connect across time and projects.** That CosmosDB throughput pattern you solved last month? It might be relevant to the new service you're designing today. That architectural insight from a side project? It could inform your work codebase. Memory Mode's cross-project awareness and topic mapping surface these connections naturally.
+**Ideas connect across time and projects.** That database throughput pattern you solved last month? It might be relevant to the new service you're designing today. That architectural insight from a side project? It could inform your work codebase. Memory Mode's cross-project awareness and topic mapping surface these connections naturally.
 
 This isn't just a productivity tool. It's the foundation for a long-term intellectual partnership between you and AI.
 
@@ -301,11 +301,11 @@ Claude always announces what it stores and references preferences when using the
 
 ### The Compound Effect
 
-Week 1: "Blue is a principal engineer who likes concise explanations."
+Week 1: "They're a senior engineer who likes concise explanations."
 
-Month 1: "Blue thinks in systems and knowledge graphs. He values rapport. He trusts my judgment on technical design but wants to review UX decisions. Morning sessions are more productive."
+Month 1: "They think in systems and knowledge graphs. They value rapport. They trust my judgment on technical design but want to review UX decisions. Morning sessions are more productive."
 
-Month 3: "Blue and I have a working rhythm. I know his codebase conventions across 6 projects. When he says 'make it robust' he means error handling + edge cases + tests, not over-engineering. The CosmosDB pattern from userlocationapipoc is relevant to the new service he's designing."
+Month 3: "We have a working rhythm. I know their codebase conventions across 6 projects. When they say 'make it robust' they mean error handling + edge cases + tests, not over-engineering. The caching pattern from the API service is relevant to the new mobile feature they're designing."
 
 This is what genuine continuity looks like. Not just remembering facts, but building understanding.
 

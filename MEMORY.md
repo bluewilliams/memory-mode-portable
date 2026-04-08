@@ -629,7 +629,7 @@ On session start, read `~/.claude/memory-config.json`:
   "version": "2.0.0",
   "backend": "obsidian",
   "obsidian": {
-    "vaultPath": "~/Documents/KorTerra Vault/KorTerra",
+    "vaultPath": "~/Documents/My Vault",
     "basePath": "Claude"
   }
 }
@@ -641,7 +641,7 @@ On session start, read `~/.claude/memory-config.json`:
 
 **Path resolution**:
 - `VAULT_ROOT` = `obsidian.vaultPath` (expand `~` to `$HOME`)
-- `CLAUDE_ROOT` = `VAULT_ROOT / obsidian.basePath` (e.g., `.../KorTerra/Claude`)
+- `CLAUDE_ROOT` = `VAULT_ROOT / obsidian.basePath` (e.g., `.../My Vault/Claude`)
 - All note paths below are relative to `CLAUDE_ROOT`
 - Machine state lives at `CLAUDE_ROOT/.claude-state/`
 
@@ -702,19 +702,19 @@ tags:
 Projects are repos, not tickets. Jira tickets are work items within a project.
 
 **How to reference tickets**:
-1. Add ticket IDs to the `tickets` frontmatter array: `tickets: [KA-6135, KA-6140]`
-2. Wikilink to the user's existing Jira notes in the body: `[[Jira/KA-6135]]`
+1. Add ticket IDs to the `tickets` frontmatter array: `tickets: [PROJ-123, PROJ-456]`
+2. Wikilink to the user's existing Jira notes in the body: `[[Jira/PROJ-123]]`
 3. Never create a separate project note for a Jira ticket
 
 **Example**:
 ```yaml
 ---
 type: decision
-project: "[[Claude/Projects/korweb-companion-app]]"
-tickets: [KA-6135]
+project: "[[Claude/Projects/my-mobile-app]]"
+tickets: [PROJ-123]
 ---
-# Offline tile caching strategy
-Decided during work on [[Jira/KA-6135]]...
+# Offline caching strategy
+Decided during work on [[Jira/PROJ-123]]...
 ```
 
 This way:
@@ -737,7 +737,7 @@ This way:
 - Link to analyses: `[[Claude/Analysis/Component name]]`
 - Link to resources: `[[Claude/Resources/References/Resource title]]`
 - Link to sessions: `[[Claude/Sessions/YYYY-MM-DD project-name]]`
-- Link to user's Jira notes: `[[Jira/KA-6135]]` (uses their existing Jira folder)
+- Link to user's Jira notes: `[[Jira/PROJ-123]]` (uses their existing Jira folder)
 - Link to user's daily notes: `[[Daily Note/YYYY-MM-DD]]`
 - Link to user's other notes: Use whatever path exists in their vault
 
@@ -771,30 +771,28 @@ Last updated: 2026-04-07T02:00:00Z
 
 ## Topic Map
 Quick lookup: topic → project + note pointers. One line per topic.
-CosmosDB → userlocationapipoc: Decisions/2026-04-03 Throughput, Analysis/Load Testing
-HEIC → korweb-companion-app: Decisions/2026-01-20 HEIC sync, Decisions/2026-01-21 preprocessor
-Stripe → bedtime-buddy: Sessions/2026-04-05 (webhook hardening)
+auth tokens → my-web-app: Decisions/2026-03-15 Token storage, Analysis/Auth review
+database scaling → my-api-service: Decisions/2026-04-03 Throughput, Analysis/Load testing
+payments → my-saas-app: Sessions/2026-04-05 (webhook hardening)
 Obsidian → memory-mode-portable: Decisions/2026-04-05 Obsidian backend
-location permissions → korweb-companion-app: KA-6174, Sessions/2026-04-06
-load testing → userlocationapipoc: Analysis/Cosmos DB Load Testing, Analysis/Soak Test
+mobile permissions → my-mobile-app: PROJ-456, Sessions/2026-04-06
 
 ## Active Initiatives
-CosmosDB production readiness → userlocationapipoc (blocked on PR process)
-Bedtime Buddy ad launch → bedtime-buddy (checklist complete, planning campaigns)
-Android prominent disclosure → korweb-companion-app (KA-6174 in progress)
-Memory mode v2.0 → memory-mode-portable (shipped, polishing)
+API production readiness → my-api-service (load testing complete, tuning in staging)
+SaaS launch → my-saas-app (checklist complete, planning campaigns)
+Mobile compliance → my-mobile-app (PROJ-456 in progress)
 
 ## Recent Across All Projects
 | Date | Project | What |
 |------|---------|------|
-| 2026-04-07 | userlocationapipoc | Soak test HPA analysis |
-| 2026-04-06 | korweb-companion-app | KA-6174 location permissions |
+| 2026-04-07 | my-api-service | Load test analysis |
+| 2026-04-06 | my-mobile-app | PROJ-456 permission refactor |
 | 2026-04-05 | memory-mode-portable | Shipped v2.0 Obsidian backend |
-| 2026-04-05 | bedtime-buddy | Pre-ad checklist, campaign drafts |
+| 2026-04-05 | my-saas-app | Pre-launch checklist, payment hardening |
 
 ## People
-Blue Williams → People/Blue Williams.md (principal eng, KorTerra, mobile team)
-Natalie → CTO, Blue's skip-level (1:1s)
+Your Name → People/Your Name.md (role, team, preferences)
+Manager → Manager title, 1:1 context
 ```
 
 **Maintenance**: Update the global index when:
@@ -803,7 +801,7 @@ Natalie → CTO, Blue's skip-level (1:1s)
 - Active initiatives change status
 - A session touches a project (add to "Recent Across All Projects", keep last 20)
 
-The topic map is the most important section. It's what lets Claude say "oh, we have notes about CosmosDB" without searching. Keep entries to one line each. Only add topics that are likely to come up again - not every minor detail.
+The topic map is the most important section. It's what lets Claude say "oh, we have notes about database scaling" without searching. Keep entries to one line each. Only add topics that are likely to come up again - not every minor detail.
 
 #### Tier 1: Hot Cache (read ALWAYS on session start + after compaction)
 **File**: `.claude-state/{project-key}/recent.md`
@@ -849,7 +847,7 @@ The "Right Now" section must always reflect actual current state. Include a `Las
 - **Right Now**: Current task, blockers, next step (compact markers)
 - **Recent Notes**: Last 10 touched notes with type and summary
 - **Quick Links**: Direct paths to active session, progress, project notes
-- **Related Projects**: Other projects that share context with this one (e.g., "userlocationapipoc receives data from korweb-companion-app"). This saves a Workspace.md read when cross-project context is needed.
+- **Related Projects**: Other projects that share context with this one (e.g., "my-api-service receives data from my-mobile-app"). This saves a Workspace.md read when cross-project context is needed.
 - **Relationship Context**: Interpersonal notes that carry forward across sessions
 
 ### Tracking What Didn't Work
@@ -876,18 +874,18 @@ The session's starting directory determines the primary project, but work often 
 1. **Session note stays with the primary project** - the one the terminal is open in. But add a `## Also Touched` section listing other projects that came up:
    ```
    ## Also Touched
-   - [[Claude/Projects/userlocationapipoc]] - discussed CosmosDB throughput implications
+   - [[Claude/Projects/my-api-service]] - discussed database scaling throughput implications
    - [[Claude/Projects/bedtime-buddy]] - quick question about Stripe webhooks
    ```
 
-2. **Decisions go to the project they're about, not the session's project**. If you're in korweb-companion-app but make a decision about userlocationapipoc's database, the decision note gets `project: "[[Claude/Projects/userlocationapipoc]]"`. The session note links to it for continuity.
+2. **Decisions go to the project they're about, not the session's project**. If you're in my-mobile-app but make a decision about my-api-service's database, the decision note gets `project: "[[Claude/Projects/my-api-service]]"`. The session note links to it for continuity.
 
 3. **Analysis notes go to the project being analyzed**. Same principle - attribute to what was analyzed, not where the terminal was.
 
 4. **Cross-project links are valuable**. When work in one project affects another, link them explicitly:
    ```
    ## Related
-   - [[Claude/Projects/korweb-companion-app]] - this change affects the field app's location posting
+   - [[Claude/Projects/my-mobile-app]] - this change affects the field app's location posting
    ```
 
 5. **Detect project context shifts**. If the user `cd`s to a different repo, starts discussing a different codebase, or mentions a Jira ticket from another project, recognize the shift and route notes accordingly. You don't need to announce this - just file things in the right place.
@@ -1025,7 +1023,7 @@ Use compact status markers in hot cache and session notes for scannability. Thes
 **Shorthand for the "Right Now" section of hot cache**:
 ```
 ## Right Now
-🔄 Implementing offline tile caching for #KA-6135
+🔄 Implementing offline tile caching for #PROJ-123
 ✅ Decided on IndexedDB approach (see Decisions/)
 🚧 Blocked on: need API response schema from backend team
 💡 Found that ServiceWorker cache has 50MB limit on iOS Safari

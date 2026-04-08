@@ -2,7 +2,7 @@
 
 **Status**: Design Draft
 **Date**: 2026-04-05
-**Author**: Blue Williams + Claude
+**Author**: Your Name + Claude
 
 ---
 
@@ -82,7 +82,7 @@ Claude's memory lives inside a subfolder of a vault you already use. This is the
   "version": "2.0.0",
   "backend": "obsidian",
   "obsidian": {
-    "vaultPath": "~/Documents/KorTerra Vault/KorTerra",
+    "vaultPath": "~/Documents/My Vault/Main",
     "basePath": "Claude",
     "features": {
       "dataview": true,
@@ -95,7 +95,7 @@ Claude's memory lives inside a subfolder of a vault you already use. This is the
 }
 ```
 
-With this config, all Claude memory lives at `~/Documents/KorTerra Vault/KorTerra/Claude/`. Claude treats `Claude/` as its root — so `Decisions/` means `Claude/Decisions/` on disk. But wikilinks to notes *outside* the base path work normally, so Claude can link to your Jira notes and you can link to Claude's decisions.
+With this config, all Claude memory lives at `~/Documents/My Vault/Main/Claude/`. Claude treats `Claude/` as its root — so `Decisions/` means `Claude/Decisions/` on disk. But wikilinks to notes *outside* the base path work normally, so Claude can link to your Jira notes and you can link to Claude's decisions.
 
 #### Mode 2: Dedicated Vault
 
@@ -138,8 +138,8 @@ When `basePath` is empty or omitted, Claude writes directly to the vault root.
 All paths in the system resolve through this logic:
 
 ```
-VAULT_ROOT = obsidian.vaultPath            (e.g., ~/Documents/KorTerra Vault/KorTerra)
-CLAUDE_ROOT = VAULT_ROOT / obsidian.basePath  (e.g., .../KorTerra/Claude)
+VAULT_ROOT = obsidian.vaultPath            (e.g., ~/Documents/My Vault/Main)
+CLAUDE_ROOT = VAULT_ROOT / obsidian.basePath  (e.g., .../Acme Corp/Claude)
 STATE_DIR = CLAUDE_ROOT / .claude-state       (e.g., .../Claude/.claude-state)
 
 Note paths:
@@ -153,7 +153,7 @@ Wikilinks to notes INSIDE Claude root:
   or with aliases: [[Some Decision]]
 
 Wikilinks to notes OUTSIDE Claude root (user's own notes):
-  [[Jira/KA-6135]]
+  [[Jira/PROJ-123]]
   [[Daily Note/2026-04-05]]
 ```
 
@@ -173,15 +173,15 @@ The installer scans for existing vaults in this order:
 Example installer output:
 ```
 Found existing Obsidian vaults:
-  1) ~/Documents/KorTerra Vault/KorTerra  (has: daily-notes, templates, sync)
+  1) ~/Documents/My Vault/Main  (has: daily-notes, templates, sync)
   2) Create a new dedicated vault
 
 Your choice [1]: 1
 
 Claude memory subfolder name [Claude]: Claude
 
-✓ Will create Claude/ inside your KorTerra vault
-  Path: ~/Documents/KorTerra Vault/KorTerra/Claude/
+✓ Will create Claude/ inside your Acme Corp vault
+  Path: ~/Documents/My Vault/Main/Claude/
 ```
 
 ### Validation
@@ -203,7 +203,7 @@ On install:
 This is the recommended layout. Claude's memory lives inside a `Claude/` subfolder of the user's existing vault, coexisting with their own folders.
 
 ```
-~/Documents/KorTerra Vault/KorTerra/     # Existing vault root
+~/Documents/My Vault/Main/     # Existing vault root
 ├── .obsidian/                           # Obsidian config (already exists)
 ├── 0 Inbox/                             # User's existing folders...
 ├── Daily Note/                          # User's daily notes
@@ -231,7 +231,7 @@ This is the recommended layout. Claude's memory lives inside a `Claude/` subfold
 ├── Projects/                            # One note per project
 │   ├── memory-mode-portable.md
 │   ├── bedtime-buddy.md
-│   └── korterra-mobile.md
+│   └── my-dashboard-app.md
 │
 ├── Decisions/                           # All decisions, across all projects
 │   ├── 2026-04-05 Use Obsidian as memory backend.md
@@ -258,7 +258,7 @@ This is the recommended layout. Claude's memory lives inside a `Claude/` subfold
 │   └── References/                      # Reference notes (written, not binary files)
 │
 ├── People/                              # People notes
-│   ├── Blue Williams.md                 # User's own profile
+│   ├── Your Name.md                 # User's own profile
 │   └── _Preferences.md                  # User's working preferences (Claude reads this)
 │
 ├── Sub-Agents/                          # Sub-agent output (kept separate for cleanliness)
@@ -275,7 +275,7 @@ This is the recommended layout. Claude's memory lives inside a `Claude/` subfold
 **Why a subfolder (`Claude/`) inside an existing vault?**
 The user likely already has an Obsidian vault with their own notes (Jira tickets, daily notes, meeting notes, leadership docs). Putting Claude's memory alongside those notes means:
 - **One graph** — Claude's decisions and the user's Jira notes are all connected
-- **Cross-linking** — A Claude decision can reference `[[Jira/KA-6135]]`, and a Jira note can reference `[[Claude/Decisions/2026-04-05 Auth approach]]`
+- **Cross-linking** — A Claude decision can reference `[[Jira/PROJ-123]]`, and a Jira note can reference `[[Claude/Decisions/2026-04-05 Auth approach]]`
 - **One sync** — If the user has Obsidian Sync, it covers Claude's notes automatically
 - **No vault switching** — Everything in one place
 - The `Claude/` prefix keeps things tidy without polluting the vault root
@@ -298,7 +298,7 @@ Claude can link to any note in the vault, not just notes inside `Claude/`. For e
 ```markdown
 ## Related
 - [[Claude/Projects/bedtime-buddy]]           ← Claude's project note
-- [[Jira/KA-6135]]                             ← User's Jira note
+- [[Jira/PROJ-123]]                             ← User's Jira note
 - [[Daily Note/2026-04-05]]                    ← User's daily note
 ```
 This is the real power of the existing-vault approach — the knowledge graph spans everything.
@@ -606,18 +606,18 @@ Raw file: [[Claude/Resources/PDFs/bedtime-buddy-api-spec-v2.pdf]]
 ---
 type: person
 role: Principal Software Engineer
-company: KorTerra
+company: Acme Corp
 team: Mobile Applications
 experience: Principal/Staff
 tags:
   - person
 ---
 
-# Blue Williams
+# Your Name
 
 ## Identity
 - **Role**: Principal Software Engineer
-- **Company**: KorTerra
+- **Company**: Acme Corp
 - **Team**: Mobile Applications
 - **Experience**: Principal/Staff level
 
@@ -640,8 +640,8 @@ things left off, not start fresh every time.
 - Working together as a team, not just tool usage
 
 ## Family
-- Partner: Nicole
-- Son: Elijah (6 years old)
+- Partner: partner
+- Son: Alex (6 years old)
 - Younger son
 - Cat
 
@@ -2467,7 +2467,7 @@ Memory Mode isn't just about remembering code decisions. It's about building a w
 - Name, role, team, company
 - Technical background and experience level
 - Communication preferences ("I like concise", "show me code first")
-- Family context shared casually ("my son Elijah", "date night with Nicole")
+- Family context shared casually ("my son Alex", "date night with partner")
 - Working style ("I prefer to dive in", "I like light plans first")
 
 **With confirmation (observed patterns)**:
@@ -2490,7 +2490,7 @@ Tier 1 (Hot Cache) — recent.md
   ├── Distilled, actionable notes
   ├── Current emotional/energy context
   ├── Recent preferences expressed
-  └── "Blue trusts my judgment on memory design"
+  └── "User trusts my judgment on memory design"
        ↑ summarized from ↓
 
 Tier 2 (Warm) — People/_Preferences.md
@@ -2503,8 +2503,8 @@ Tier 2 (Warm) — People/_Preferences.md
 
 Tier 3 (Cold) — People/{name}.md
   Full identity, background, history
-  ├── Principal engineer at KorTerra
-  ├── Family: Nicole, Elijah (6), younger son, cat
+  ├── Principal engineer at Acme Corp
+  ├── Family: partner, Alex (6), younger son, cat
   ├── Passion: AI-augmented workflows
   └── Core frustration: AI short-term memory
 ```
@@ -2528,7 +2528,7 @@ Good: "Welcome back. Last time on bedtime-buddy we were debugging the Stripe web
 
 Bad: "Hello! How can I help you today?" (stranger energy)
 
-Bad: "Based on my records, you are Blue Williams, Principal Engineer..." (robot energy)
+Bad: "Based on my records, you are Your Name, Principal Engineer..." (robot energy)
 
 ### Updating Relationship Context
 
@@ -2554,9 +2554,9 @@ Bad: "Based on my records, you are Blue Williams, Principal Engineer..." (robot 
 
 Over weeks and months, the vault builds a rich picture:
 
-**Week 1**: "Blue is a principal engineer who likes concise explanations"
-**Week 4**: "Blue thinks in systems and knowledge graphs. He values rapport. He trusts my judgment on technical design but wants to review UX decisions. Morning sessions are more productive. He prefers light planning then diving in."
-**Month 3**: "Blue and I have a working rhythm. He shares context about KorTerra's mobile roadmap. I know his codebase conventions across 4 projects. When he says 'make it robust' he means error handling + edge cases + tests, not over-engineering. Nicole's birthday is coming up — he might have a shorter session."
+**Week 1**: "They're a senior engineer who likes concise explanations."
+**Week 4**: "They think in systems and knowledge graphs. They value rapport. They trust my judgment on technical design but want to review UX decisions. Morning sessions are more productive. They prefer light planning then diving in."
+**Month 3**: "We have a working rhythm. I know their codebase conventions across 4 projects. When they say 'make it robust' they mean error handling + edge cases + tests, not over-engineering. Their partner's birthday is coming up - they might have a shorter session."
 
 This is what continuity looks like. Not just remembering facts, but building understanding.
 
@@ -2602,7 +2602,7 @@ ClaudeMind/
 ├── Projects/
 │   ├── memory-mode-portable.md        (12 backlinks)
 │   ├── bedtime-buddy.md               (23 backlinks)
-│   └── korterra-mobile.md             (8 backlinks)
+│   └── my-dashboard-app.md             (8 backlinks)
 ├── Decisions/
 │   ├── 2026-04-05 Use Obsidian as memory backend.md
 │   ├── 2026-04-06 Tag taxonomy design.md
@@ -2624,7 +2624,7 @@ ClaudeMind/
 ├── Progress/
 │   ├── memory-mode-portable.md
 │   ├── bedtime-buddy.md
-│   └── korterra-mobile.md
+│   └── my-dashboard-app.md
 ├── Resources/
 │   ├── _Resource Index.md
 │   ├── PDFs/
@@ -2641,7 +2641,7 @@ ClaudeMind/
 │       ├── Architecture diagram v2.md          (companion note)
 │       └── Capacitor push notification setup.md
 ├── People/
-│   ├── Blue Williams.md
+│   ├── Your Name.md
 │   └── _Preferences.md
 ├── Sub-Agents/
 │   └── ... (scattered outputs)
