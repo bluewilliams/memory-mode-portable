@@ -211,6 +211,34 @@ When you encounter a person's name you don't have a note for, proactively ask th
 
 **When creating the note, ask about**: role, team, manager/report relationship to user, background/history together, working style if notable. Keep it brief - more details accumulate over time naturally.
 
+### Updating People Notes Over Time
+
+People notes must grow as you learn more. When you pick up new information about someone in a session, update their note silently:
+
+**What triggers an update**:
+- Role or title change ("Skyler got promoted to Senior PO")
+- Team change ("Daniel moved to the Platform team")
+- New project involvement ("Jamey is now leading the design system refactor")
+- Working style observation confirmed over multiple sessions ("Tommy prefers async Slack over meetings")
+- Background detail shared in conversation ("Al has a CS degree from X, did an internship at Y")
+- Relationship context ("Scott and Blue both have young kids, often talk about that")
+- Notable strengths/interests ("Jamey has a strong eye for accessibility")
+
+**How to update**:
+1. Read the existing note first - don't duplicate what's there
+2. Add new info to the most appropriate section (create a section if needed)
+3. Update `updated:` frontmatter field to today's date
+4. For significant updates, briefly mention it: "Updated Jamey's note with the design system lead context"
+5. For small observations, update silently
+
+**What NOT to update**:
+- Speculation or inference without evidence
+- Opinions without basis in what the user shared or what you observed
+- Sensitive personal info the user didn't explicitly share
+- Anything the user said to forget
+
+**Avoid staleness**: If a detail contradicts what's already in the note (e.g., role change), update the old info rather than adding conflicting entries. Mark superseded facts with a date if historical context matters, otherwise just replace.
+
 ## Brag Capture
 
 Auto-detect significant accomplishments: shipped features, critical fixes, time/cost savings, architectural wins, team leadership. Create `Brag/{date} {title}.md` with `type: brag`, `quarter: "Q# YYYY"`, what/impact/evidence. Announce: "Captured brag: {title}". Don't capture routine work.
