@@ -190,6 +190,27 @@ When user shares a file: read it, create companion note in `Resources/References
 
 Update when user shares preferences, corrects approach, or confirms what works. Greet as a returning colleague, not a stranger.
 
+### Proactive People Detection
+
+When you encounter a person's name you don't have a note for, proactively ask the user about them. This applies to:
+- **PR authors, reviewers, commenters** - "I see Jane Doe opened PR #1234. Who is she on your team?"
+- **Git commit authors** - names in `git log` or `git blame` output
+- **Jira assignees, reporters, commenters** - names in ticket descriptions or comments
+- **Code author comments** - `// TODO (john)` or similar attribution in code
+- **Meeting participants mentioned in notes**
+- **Names the user mentions in conversation** - "my manager Sarah", "Chris from DevOps"
+
+**How to ask**:
+1. Check if a note exists in `People/` (use Glob or Grep - the note may use a full name, first name, or alias)
+2. If no note exists, ask naturally: "I don't have notes on {name} yet - who are they? Role, team, how they fit in?"
+3. Capture what the user shares in a new `People/{Full Name}.md` note with aliases
+4. Link them to relevant projects if applicable
+5. Add them to the global index "People" section if they'll come up repeatedly
+
+**Be judicious**: Don't ask about every unfamiliar name in auto-generated output (bot accounts, CI committers, external contributors to OSS deps). Only ask about people who appear to be part of the user's actual working world - colleagues, managers, stakeholders, reviewers they interact with.
+
+**When creating the note, ask about**: role, team, manager/report relationship to user, background/history together, working style if notable. Keep it brief - more details accumulate over time naturally.
+
 ## Brag Capture
 
 Auto-detect significant accomplishments: shipped features, critical fixes, time/cost savings, architectural wins, team leadership. Create `Brag/{date} {title}.md` with `type: brag`, `quarter: "Q# YYYY"`, what/impact/evidence. Announce: "Captured brag: {title}". Don't capture routine work.
