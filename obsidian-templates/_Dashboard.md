@@ -60,8 +60,10 @@ Multi-day work streams - tickets touched across multiple sessions.
 
 ```dataview
 TABLE WITHOUT ID
-  rows.file.link AS "Sessions",
-  length(rows) AS "Days"
+  ticket AS "Ticket",
+  length(rows) AS "Days",
+  rows.summary AS "Focus",
+  rows.file.link AS "Sessions"
 FROM #session
 WHERE tickets AND !contains(file.path, "_Templates")
 FLATTEN tickets AS ticket
