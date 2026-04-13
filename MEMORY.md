@@ -53,6 +53,15 @@ Every note MUST have:
 
 **Session summary rule**: Every session note MUST have a `summary` frontmatter field with a one-line description of the focus (e.g., "KA-6175 401 storm fix validation", "CosmosDB soak test analysis", "Obsidian backend design"). Update the summary as the session focus evolves. This is what shows in the dashboard for scannability - without it, the dashboard just shows "{date} {project}" rows that all look identical.
 
+**Session threading rule**: When creating a new session note, check if today's work continues from a prior session. If yes, set `continues: "[[Claude/Sessions/{prior-date} {project}]]"` in frontmatter. This creates a navigable chain across days for multi-day work. How to detect continuation:
+1. Read the project hot cache - is the "Right Now" task something ongoing?
+2. Check the most recent prior session note for this project - does it share tickets with today's work?
+3. If yes to either, set `continues` to that prior session
+4. The `## Thread` section in the template auto-computes "Next" via Dataview (finds sessions that point back to this one), so no amendment of prior notes is needed
+5. "Related sessions" in the Thread section auto-finds sessions sharing tickets
+
+This combined with the `tickets` array in frontmatter means multi-day work threads are navigable both forward and backward without manually maintaining links.
+
 ### Note Locations
 
 | Type | Folder | Naming |

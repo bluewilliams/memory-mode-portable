@@ -14,6 +14,8 @@ aliases:
 
 ---
 
+# Now
+
 ## Needs Attention
 
 ```dataview
@@ -26,8 +28,6 @@ FROM ""
 WHERE status = "stub" AND !contains(file.path, "_Templates")
 SORT date DESC
 ```
-
----
 
 ## Active Sessions
 
@@ -42,22 +42,6 @@ WHERE status = "active" AND !contains(file.path, "_Templates")
 SORT date DESC
 ```
 
-### Recent Sessions (all)
-
-```dataview
-TABLE WITHOUT ID
-  file.link AS "Session",
-  summary AS "Focus",
-  tickets AS "Tickets",
-  project AS "Project"
-FROM #session
-WHERE !contains(file.path, "_Templates")
-SORT date DESC
-LIMIT 15
-```
-
----
-
 ## Active Projects
 
 ```dataview
@@ -70,7 +54,26 @@ WHERE status = "active" AND !contains(file.path, "_Templates")
 SORT file.name ASC
 ```
 
+## Active Threads
+
+Multi-day work streams - tickets touched across multiple sessions.
+
+```dataview
+TABLE WITHOUT ID
+  rows.file.link AS "Sessions",
+  length(rows) AS "Days"
+FROM #session
+WHERE tickets AND !contains(file.path, "_Templates")
+FLATTEN tickets AS ticket
+GROUP BY ticket
+WHERE length(rows) > 1
+SORT length(rows) DESC
+LIMIT 10
+```
+
 ---
+
+# Recent
 
 ## Recently Changed
 
@@ -85,8 +88,6 @@ SORT file.mtime DESC
 LIMIT 10
 ```
 
----
-
 ## Recent Decisions
 
 ```dataview
@@ -98,10 +99,8 @@ TABLE WITHOUT ID
 FROM #decision
 WHERE !contains(file.path, "_Templates")
 SORT date DESC
-LIMIT 15
+LIMIT 10
 ```
-
----
 
 ## Recent Analysis
 
@@ -116,8 +115,6 @@ SORT date DESC
 LIMIT 10
 ```
 
----
-
 ## Recent Brags
 
 ```dataview
@@ -130,8 +127,6 @@ WHERE !contains(file.path, "_Templates")
 SORT date DESC
 LIMIT 10
 ```
-
----
 
 ## Recent Resources
 
@@ -148,19 +143,7 @@ LIMIT 10
 
 ---
 
-## This Week's Activity
-
-```dataview
-TABLE WITHOUT ID
-  type AS "Type",
-  count(rows) AS "Count"
-FROM ""
-WHERE type AND !contains(file.path, "_Templates") AND !contains(file.path, ".claude-state") AND file.mtime >= date(today) - dur(7 days)
-GROUP BY type
-SORT count(rows) DESC
-```
-
----
+# Reference
 
 ## Sub-Agent Activity
 
@@ -175,8 +158,6 @@ WHERE !contains(file.path, "_Templates")
 SORT date DESC
 LIMIT 10
 ```
-
----
 
 ## Stats
 
