@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(git push:*)",
+      "Bash(./install.sh)",
+      "Bash(mkdir -p /Users/bluesmacbookpro/.claude/hooks /Users/bluesmacbookpro/.claude/.memory-hooks)",
+      "Bash(cp /Users/bluesmacbookpro/workspace/memory-mode-portable/hooks/memory-tracker.sh /Users/bluesmacbookpro/.claude/hooks/)",
+      "Bash(cp /Users/bluesmacbookpro/workspace/memory-mode-portable/hooks/memory-nudge.sh /Users/bluesmacbookpro/.claude/hooks/)",
+      "Bash(cp /Users/bluesmacbookpro/workspace/memory-mode-portable/hooks/memory-precompact.sh /Users/bluesmacbookpro/.claude/hooks/)",
+      "Bash(cp /Users/bluesmacbookpro/workspace/memory-mode-portable/MEMORY.md /Users/bluesmacbookpro/.claude/MEMORY.md)",
+      "Bash(cp /Users/bluesmacbookpro/workspace/memory-mode-portable/USER.md /Users/bluesmacbookpro/.claude/USER.md)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(cp /Users/bluesmacbookpro/workspace/memory-mode-portable/hooks/memory-common.sh /Users/bluesmacbookpro/.claude/hooks/memory-common.sh)",
+      "Bash(cp /Users/bluesmacbookpro/workspace/memory-mode-portable/hooks/memory-tracker.sh /Users/bluesmacbookpro/.claude/hooks/memory-tracker.sh)",
+      "Bash(cp /Users/bluesmacbookpro/workspace/memory-mode-portable/hooks/memory-nudge.sh /Users/bluesmacbookpro/.claude/hooks/memory-nudge.sh)",
+      "Bash(cp /Users/bluesmacbookpro/workspace/memory-mode-portable/hooks/memory-precompact.sh /Users/bluesmacbookpro/.claude/hooks/memory-precompact.sh)",
+      "Bash(cp /Users/bluesmacbookpro/workspace/memory-mode-portable/obsidian-templates/_Dashboard.md '/Users/bluesmacbookpro/Documents/KorTerra Vault/KorTerra/Claude/_Dashboard.md')",
+      "Bash(cp '/Users/bluesmacbookpro/workspace/memory-mode-portable/obsidian-templates/_Resource Index.md' '/Users/bluesmacbookpro/Documents/KorTerra Vault/KorTerra/Claude/Resources/_Resource Index.md')",
+      "Bash(cp /Users/bluesmacbookpro/workspace/memory-mode-portable/obsidian-templates/Workspace.md '/Users/bluesmacbookpro/Documents/KorTerra Vault/KorTerra/Claude/Workspace.md')",
+      "Bash(cp /Users/bluesmacbookpro/workspace/memory-mode-portable/obsidian-templates/_Preferences.md '/Users/bluesmacbookpro/Documents/KorTerra Vault/KorTerra/Claude/People/_Preferences.md')",
+      "Bash(cp /Users/bluesmacbookpro/workspace/memory-mode-portable/obsidian-templates/__TRACKED_VAR__ '/Users/bluesmacbookpro/Documents/KorTerra Vault/KorTerra/Claude/_Templates/__TRACKED_VAR__')",
+      "Bash(bash:*)"
+    ]
+  }
+}

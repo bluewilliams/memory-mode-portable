@@ -51,6 +51,8 @@ Every note MUST have:
 
 **Session date rule**: One session note per project per day. Never amend a previous day's.
 
+**Session summary rule**: Every session note MUST have a `summary` frontmatter field with a one-line description of the focus (e.g., "KA-6175 401 storm fix validation", "CosmosDB soak test analysis", "Obsidian backend design"). Update the summary as the session focus evolves. This is what shows in the dashboard for scannability - without it, the dashboard just shows "{date} {project}" rows that all look identical.
+
 ### Note Locations
 
 | Type | Folder | Naming |

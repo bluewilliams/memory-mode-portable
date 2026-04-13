@@ -34,11 +34,26 @@ SORT date DESC
 ```dataview
 TABLE WITHOUT ID
   file.link AS "Session",
-  project AS "Project",
-  branch AS "Branch"
+  summary AS "Focus",
+  tickets AS "Tickets",
+  project AS "Project"
 FROM #session
 WHERE status = "active" AND !contains(file.path, "_Templates")
 SORT date DESC
+```
+
+### Recent Sessions (all)
+
+```dataview
+TABLE WITHOUT ID
+  file.link AS "Session",
+  summary AS "Focus",
+  tickets AS "Tickets",
+  project AS "Project"
+FROM #session
+WHERE !contains(file.path, "_Templates")
+SORT date DESC
+LIMIT 15
 ```
 
 ---
@@ -169,4 +184,4 @@ LIMIT 10
 
 ---
 
-*Quick links: [[Claude/Workspace|Workspace]] | [[Claude/People/_Preferences|Preferences]] | [[Claude/Brag/_Brag Dashboard|Brag Dashboard]] | [[Claude/Resources/_Resource Index|Resources]]*
+*Quick links: [[Claude/Workspace|Workspace]] | [[Claude/People/Blue Williams|Profile]] | [[Claude/People/_Preferences|Preferences]] | [[Claude/Brag/_Brag Dashboard|Brag Dashboard]] | [[Claude/Resources/_Resource Index|Resources]]*

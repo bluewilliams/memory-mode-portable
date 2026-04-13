@@ -4,6 +4,7 @@ project: "[[Claude/Projects/]]"
 date: {{date}}
 branch: 
 status: active
+summary: "One-line description of the session focus - keep it scannable"
 tickets: []
 tags:
   - session
