@@ -3,6 +3,7 @@ type: resource
 category: 
 source: user-shared
 date: {{date}}
+summary: "One-line description of what this resource is and why it's here"
 tags:
   - resource
 related: []

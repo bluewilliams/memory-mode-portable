@@ -21,6 +21,7 @@ aliases:
 ```dataview
 TABLE WITHOUT ID
   file.link AS "Note",
+  summary AS "Focus",
   type AS "Type",
   project AS "Project",
   date AS "Date"
@@ -82,6 +83,7 @@ LIMIT 10
 ```dataview
 TABLE WITHOUT ID
   file.link AS "Note",
+  summary AS "Focus",
   type AS "Type",
   project AS "Project"
 FROM ""
@@ -95,9 +97,9 @@ LIMIT 10
 ```dataview
 TABLE WITHOUT ID
   file.link AS "Decision",
+  summary AS "Focus",
   project AS "Project",
-  status AS "Status",
-  category AS "Category"
+  status AS "Status"
 FROM #decision
 WHERE !contains(file.path, "_Templates")
 SORT date DESC
@@ -109,6 +111,7 @@ LIMIT 10
 ```dataview
 TABLE WITHOUT ID
   file.link AS "Analysis",
+  summary AS "Focus",
   project AS "Project",
   component AS "Component"
 FROM #analysis
@@ -122,6 +125,7 @@ LIMIT 10
 ```dataview
 TABLE WITHOUT ID
   file.link AS "Accomplishment",
+  summary AS "Focus",
   project AS "Project",
   quarter AS "Quarter"
 FROM #brag
@@ -135,6 +139,7 @@ LIMIT 10
 ```dataview
 TABLE WITHOUT ID
   file.link AS "Resource",
+  summary AS "Focus",
   category AS "Category",
   source AS "Source"
 FROM #resource
@@ -152,9 +157,9 @@ LIMIT 10
 ```dataview
 TABLE WITHOUT ID
   file.link AS "Output",
+  summary AS "Focus",
   project AS "Project",
-  agent AS "Agent",
-  task AS "Task"
+  agent AS "Agent"
 FROM #subagent
 WHERE !contains(file.path, "_Templates")
 SORT date DESC

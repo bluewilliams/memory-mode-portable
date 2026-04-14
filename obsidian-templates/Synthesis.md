@@ -4,6 +4,7 @@ project: "[[Claude/Projects/]]"
 date: {{date}}
 component: "synthesis"
 synthesizes: []
+summary: "One-line description of the synthesis conclusion across components"
 tags:
   - analysis
   - synthesis

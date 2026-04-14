@@ -4,6 +4,7 @@ project: "[[Claude/Projects/]]"
 date: {{date}}
 path: 
 component: 
+summary: "One-line description of what was analyzed and key findings"
 tags:
   - analysis
 ---

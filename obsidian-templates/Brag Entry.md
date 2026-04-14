@@ -3,6 +3,7 @@ type: brag
 project: "[[Claude/Projects/]]"
 date: {{date}}
 quarter: 
+summary: "One-line description of the accomplishment and impact"
 tags:
   - brag
 ---

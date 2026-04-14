@@ -4,6 +4,7 @@ project: "[[Claude/Projects/]]"
 date: {{date}}
 status: pending
 category: 
+summary: "One-line description of what was decided and why it matters"
 tags:
   - decision
 aliases: []

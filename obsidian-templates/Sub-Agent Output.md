@@ -4,6 +4,7 @@ project: "[[Claude/Projects/]]"
 date: {{date}}
 agent: 
 task: 
+summary: "One-line description of findings or outcome"
 tags:
   - subagent
 ---
