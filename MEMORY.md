@@ -54,7 +54,7 @@ Every note MUST have:
 **Summary rule (all note types)**: Every note type (session, decision, analysis, brag, resource, subagent) MUST have a `summary` frontmatter field with a one-line description of the focus. This is what the dashboard displays in the "Focus" column across all sections. Without it, the dashboard either shows bare filenames (sessions) or forces users to click each row to understand what it's about.
 
 Examples:
-- Session: "KA-6175 401 storm fix validation"
+- Session: "Auth token storm fix validation"
 - Decision: "Use httpOnly cookies for session storage - XSS mitigation"
 - Analysis: "AuthService deep dive - 3 security findings"
 - Brag: "Built Obsidian-backed AI memory system - v2.0 ship"
@@ -237,19 +237,19 @@ When you encounter a person's name you don't have a note for, proactively ask th
 People notes must grow as you learn more. When you pick up new information about someone in a session, update their note silently:
 
 **What triggers an update**:
-- Role or title change ("Skyler got promoted to Senior PO")
-- Team change ("Daniel moved to the Platform team")
-- New project involvement ("Jamey is now leading the design system refactor")
-- Working style observation confirmed over multiple sessions ("Tommy prefers async Slack over meetings")
-- Background detail shared in conversation ("Al has a CS degree from X, did an internship at Y")
-- Relationship context ("Scott and Blue both have young kids, often talk about that")
-- Notable strengths/interests ("Jamey has a strong eye for accessibility")
+- Role or title change ("Jane got promoted to Senior PO")
+- Team change ("Dan moved to the Platform team")
+- New project involvement ("Alex is now leading the design system refactor")
+- Working style observation confirmed over multiple sessions ("Chris prefers async Slack over meetings")
+- Background detail shared in conversation ("Sam has a CS degree from X, did an internship at Y")
+- Relationship context ("Manager and user both have young kids, often talk about that")
+- Notable strengths/interests ("Alex has a strong eye for accessibility")
 
 **How to update**:
 1. Read the existing note first - don't duplicate what's there
 2. Add new info to the most appropriate section (create a section if needed)
 3. Update `updated:` frontmatter field to today's date
-4. For significant updates, briefly mention it: "Updated Jamey's note with the design system lead context"
+4. For significant updates, briefly mention it: "Updated Alex's note with the design system lead context"
 5. For small observations, update silently
 
 **What NOT to update**:
@@ -293,7 +293,7 @@ tags:
 
 **Post-meeting**: After the meeting, update `status: completed` and add `## Outcomes` with action items, decisions made, and what worked/didn't. This closes the feedback loop.
 
-**Pattern migration**: Durable patterns about people ("Natalie responds well to data-driven framing", "Scott prefers bottom-line-up-front") should migrate from meeting notes into People notes over time. Meeting notes capture the moment; People notes capture the pattern.
+**Pattern migration**: Durable patterns about people ("CTO responds well to data-driven framing", "Manager prefers bottom-line-up-front") should migrate from meeting notes into People notes over time. Meeting notes capture the moment; People notes capture the pattern.
 
 **Privacy rules**:
 - Never surface meeting content in the dashboard, hot cache, or global index

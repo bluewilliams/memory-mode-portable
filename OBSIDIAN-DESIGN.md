@@ -230,12 +230,12 @@ This is the recommended layout. Claude's memory lives inside a `Claude/` subfold
 │
 ├── Projects/                            # One note per project
 │   ├── memory-mode-portable.md
-│   ├── bedtime-buddy.md
+│   ├── my-saas-app.md
 │   └── my-dashboard-app.md
 │
 ├── Decisions/                           # All decisions, across all projects
 │   ├── 2026-04-05 Use Obsidian as memory backend.md
-│   └── 2026-01-19 Auth approach for bedtime-buddy.md
+│   └── 2026-01-19 Auth approach for my-saas-app.md
 │
 ├── Analysis/                            # All analyses
 │   ├── AuthService deep dive.md
@@ -243,11 +243,11 @@ This is the recommended layout. Claude's memory lives inside a `Claude/` subfold
 │
 ├── Sessions/                            # Session logs (one per project per day)
 │   ├── 2026-04-05 memory-mode-portable.md
-│   └── 2026-04-04 bedtime-buddy.md
+│   └── 2026-04-04 my-saas-app.md
 │
 ├── Progress/                            # Active work tracking (one per project)
 │   ├── memory-mode-portable.md
-│   └── bedtime-buddy.md
+│   └── my-saas-app.md
 │
 ├── Resources/                           # User-shared files + Claude-saved files
 │   ├── _Resource Index.md               # MOC for all resources
@@ -297,7 +297,7 @@ Underscore-prefixed items sort to the top in Obsidian's file explorer, making th
 Claude can link to any note in the vault, not just notes inside `Claude/`. For example:
 ```markdown
 ## Related
-- [[Claude/Projects/bedtime-buddy]]           ← Claude's project note
+- [[Claude/Projects/my-saas-app]]           ← Claude's project note
 - [[Jira/PROJ-123]]                             ← User's Jira note
 - [[Daily Note/2026-04-05]]                    ← User's daily note
 ```
@@ -363,7 +363,7 @@ a dual-purpose knowledge base the user can browse, search, and extend.
 ```markdown
 ---
 type: analysis
-project: "[[Claude/Projects/bedtime-buddy]]"
+project: "[[Claude/Projects/my-saas-app]]"
 date: 2026-01-19
 path: src/services/AuthService.ts
 component: AuthService
@@ -393,13 +393,13 @@ related to token storage and CSRF protection.
 | Low | Token refresh race condition | `AuthService.ts:89` |
 
 ## Recommendations
-- Migrate to httpOnly cookies — see [[Claude/Decisions/2026-01-19 Auth approach for bedtime-buddy]]
+- Migrate to httpOnly cookies — see [[Claude/Decisions/2026-01-19 Auth approach for my-saas-app]]
 - Add CSRF middleware to all state-changing routes
 - Implement mutex on token refresh
 
 ## Related
-- [[Claude/Projects/bedtime-buddy]]
-- [[Claude/Decisions/2026-01-19 Auth approach for bedtime-buddy]]
+- [[Claude/Projects/my-saas-app]]
+- [[Claude/Decisions/2026-01-19 Auth approach for my-saas-app]]
 ```
 
 ### 4.3 Session Log
@@ -494,7 +494,7 @@ Blue is the creator and sole maintainer. Open source on GitHub.
 v2.0 — Obsidian backend integration
 
 ## Related Projects
-- [[Claude/Projects/bedtime-buddy]] — Uses memory mode in production
+- [[Claude/Projects/my-saas-app]] — Uses memory mode in production
 - [[Claude/Workspace]] — Full project registry
 
 ## Notes
@@ -572,7 +572,7 @@ tags:
   - api
   - authentication
 related:
-  - "[[Claude/Projects/bedtime-buddy]]"
+  - "[[Claude/Projects/my-saas-app]]"
 ---
 
 # API Specification v2
@@ -580,7 +580,7 @@ related:
 Shared by Blue on 2026-04-05 for reference during auth endpoint redesign.
 
 ## Summary
-OpenAPI 3.0 spec for the bedtime-buddy REST API. Covers authentication,
+OpenAPI 3.0 spec for the my-saas-app REST API. Covers authentication,
 story generation, and subscription management endpoints.
 
 ## Key Sections
@@ -589,11 +589,11 @@ story generation, and subscription management endpoints.
 - **Subscriptions** (pages 16-20): Stripe integration, plan management
 
 ## File
-Raw file: [[Claude/Resources/PDFs/bedtime-buddy-api-spec-v2.pdf]]
+Raw file: [[Claude/Resources/PDFs/my-saas-app-api-spec-v2.pdf]]
 
 ## Related
-- [[Claude/Projects/bedtime-buddy]]
-- [[Claude/Decisions/2026-01-19 Auth approach for bedtime-buddy]]
+- [[Claude/Projects/my-saas-app]]
+- [[Claude/Decisions/2026-01-19 Auth approach for my-saas-app]]
 - [[Claude/Analysis/AuthService deep dive]]
 ```
 
@@ -647,7 +647,7 @@ things left off, not start fresh every time.
 
 ## Projects
 - [[Claude/Projects/memory-mode-portable]] — Creator/maintainer
-- [[Claude/Projects/bedtime-buddy]] — Creator
+- [[Claude/Projects/my-saas-app]] — Creator
 ```
 
 ### 4.8 Preferences Note
@@ -710,7 +710,7 @@ relationships.
 ```markdown
 ---
 type: subagent
-project: "[[Claude/Projects/bedtime-buddy]]"
+project: "[[Claude/Projects/my-saas-app]]"
 date: 2026-01-19T22:30:00Z
 agent: Explore
 task: Security scan of auth module
@@ -722,7 +722,7 @@ tags:
 # Security Scan: Auth Module
 
 ## Summary
-Scanned all authentication-related files in bedtime-buddy. Found 3 issues
+Scanned all authentication-related files in my-saas-app. Found 3 issues
 of varying severity. The most critical is XSS vulnerability from localStorage
 token storage.
 
@@ -743,7 +743,7 @@ Examined 12 files across `src/services/`, `src/middleware/`, and `src/routes/`.
 
 ## Related
 - [[Claude/Analysis/AuthService deep dive]]
-- [[Claude/Decisions/2026-01-19 Auth approach for bedtime-buddy]]
+- [[Claude/Decisions/2026-01-19 Auth approach for my-saas-app]]
 ```
 
 ### 4.10 Workspace Note
@@ -767,10 +767,10 @@ tags:
 | Project | Status | Stack | Role |
 |---------|--------|-------|------|
 | [[Claude/Projects/memory-mode-portable]] | Active | Bash, Markdown | Creator |
-| [[Claude/Projects/bedtime-buddy]] | Active | React, Express, Stripe | Creator |
+| [[Claude/Projects/my-saas-app]] | Active | React, Express, Stripe | Creator |
 
 ## Relationships
-- [[Claude/Projects/bedtime-buddy]] uses [[Claude/Projects/memory-mode-portable]] for session persistence
+- [[Claude/Projects/my-saas-app]] uses [[Claude/Projects/memory-mode-portable]] for session persistence
 
 ## Current Initiatives
 
@@ -970,8 +970,8 @@ When a decision or analysis in one project is relevant to another:
 
 ```markdown
 ## Related
-- [[Claude/Projects/bedtime-buddy]] — This auth pattern could apply there too
-- [[Claude/Decisions/2026-01-19 Auth approach for bedtime-buddy]] — Similar problem space
+- [[Claude/Projects/my-saas-app]] — This auth pattern could apply there too
+- [[Claude/Decisions/2026-01-19 Auth approach for my-saas-app]] — Similar problem space
 ```
 
 These cross-project links are what make the graph view genuinely useful — they surface connections the user might not have noticed.
@@ -2259,7 +2259,7 @@ Full vault search. Used for historical lookups, cross-project questions, and "ha
 2. **Tag-based search**: If you know the domain, search by tag
    - "Any security analyses?" → Grep for `tags:` sections containing `security`
 3. **Wikilink traversal**: Follow links from a known note
-   - Start at `Projects/bedtime-buddy.md` → follow backlinks to find all related notes
+   - Start at `Projects/my-saas-app.md` → follow backlinks to find all related notes
 4. **Full-text search**: Last resort, search the whole vault
    - Grep across all `.md` files for a keyword
 
@@ -2267,7 +2267,7 @@ Full vault search. Used for historical lookups, cross-project questions, and "ha
 - User asks about a different project than the current one
 - User asks "have we done this before?" or "what did we decide about X?"
 - Claude encounters a problem similar to something previously analyzed
-- Cross-project context is needed (e.g., "does bedtime-buddy have the same issue?")
+- Cross-project context is needed (e.g., "does my-saas-app have the same issue?")
 
 ### Retrieval Decision Flowchart
 
@@ -2356,7 +2356,7 @@ Grep: pattern="- security" path="{vault}" glob="*.md"
 Grep: pattern="- architecture" path="{vault}/Decisions/"
 
 # Find all notes tagged with a specific project
-Grep: pattern="- project/bedtime-buddy" path="{vault}"
+Grep: pattern="- project/my-saas-app" path="{vault}"
 ```
 
 #### 4. Wikilink Traversal (Medium, Relationship-Based)
@@ -2366,8 +2366,8 @@ Follow connections from a known note. Read a note → find its `[[wikilinks]]` �
 **When to use**: When you have a starting point and want to explore connections.
 
 ```
-Start: Read Projects/bedtime-buddy.md
-  → See link: [[Claude/Decisions/2026-01-19 Auth approach for bedtime-buddy]]
+Start: Read Projects/my-saas-app.md
+  → See link: [[Claude/Decisions/2026-01-19 Auth approach for my-saas-app]]
   → Read that decision
   → See link: [[Claude/Analysis/AuthService deep dive]]
   → Read that analysis
@@ -2379,8 +2379,8 @@ Start: Read Projects/bedtime-buddy.md
 Obsidian's backlinks panel shows all notes that link TO a given note. Claude can simulate this:
 
 ```bash
-# Find everything that links to the bedtime-buddy project
-Grep: pattern="\[\[Projects/bedtime-buddy" path="{vault}" glob="*.md"
+# Find everything that links to the my-saas-app project
+Grep: pattern="\[\[Projects/my-saas-app" path="{vault}" glob="*.md"
 
 # Find everything that references a specific decision
 Grep: pattern="\[\[Decisions/2026-04-05 Use Obsidian" path="{vault}" glob="*.md"
@@ -2524,7 +2524,7 @@ The greeting should feel like a colleague sitting back down at a shared desk, no
 
 Good: "Hey Blue, picking up where we left off on the Obsidian design. We were working on the tiered retrieval section. Ready to continue?"
 
-Good: "Welcome back. Last time on bedtime-buddy we were debugging the Stripe webhook — I left notes in the session log. Want to pick that up or something new?"
+Good: "Welcome back. Last time on my-saas-app we were debugging the Stripe webhook — I left notes in the session log. Want to pick that up or something new?"
 
 Bad: "Hello! How can I help you today?" (stranger energy)
 
@@ -2601,7 +2601,7 @@ Useful saved filters:
 ClaudeMind/
 ├── Projects/
 │   ├── memory-mode-portable.md        (12 backlinks)
-│   ├── bedtime-buddy.md               (23 backlinks)
+│   ├── my-saas-app.md               (23 backlinks)
 │   └── my-dashboard-app.md             (8 backlinks)
 ├── Decisions/
 │   ├── 2026-04-05 Use Obsidian as memory backend.md
@@ -2619,16 +2619,16 @@ ClaudeMind/
 ├── Sessions/
 │   ├── 2026-04-05 memory-mode-portable.md
 │   ├── 2026-04-06 memory-mode-portable.md
-│   ├── 2026-04-07 bedtime-buddy.md
+│   ├── 2026-04-07 my-saas-app.md
 │   └── ... (25 more sessions)
 ├── Progress/
 │   ├── memory-mode-portable.md
-│   ├── bedtime-buddy.md
+│   ├── my-saas-app.md
 │   └── my-dashboard-app.md
 ├── Resources/
 │   ├── _Resource Index.md
 │   ├── PDFs/
-│   │   ├── bedtime-buddy-api-spec-v2.pdf
+│   │   ├── my-saas-app-api-spec-v2.pdf
 │   │   └── stripe-webhook-guide.pdf
 │   ├── Images/
 │   │   ├── architecture-diagram-v2.png
