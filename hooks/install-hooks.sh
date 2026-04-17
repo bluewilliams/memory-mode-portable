@@ -119,7 +119,7 @@ HOOKCONFIG
 fi
 
 # Initialize state file
-echo '{"edits":0,"commits":0,"files_changed":[],"last_commit":"","last_nudge":0}' > "$STATE_DIR/activity.json"
+echo '{"edits":0,"commits":0,"files_changed":[],"last_commit":"","last_nudge":0,"cycles":0}' > "$STATE_DIR/activity.json"
 
 echo ""
 echo "=== Hooks Installation Complete ==="

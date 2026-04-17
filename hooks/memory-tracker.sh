@@ -13,7 +13,7 @@ source "$SCRIPT_DIR/memory-common.sh" 2>/dev/null || true
 
 STATE_DIR=$(get_state_dir 2>/dev/null) || STATE_DIR="$HOME/.claude/.memory-hooks"
 STATE_FILE="$STATE_DIR/activity.json"
-INIT_JSON='{"edits":0,"commits":0,"files_changed":[],"last_commit":"","last_nudge":0}'
+INIT_JSON='{"edits":0,"commits":0,"files_changed":[],"last_commit":"","last_nudge":0,"cycles":0}'
 
 mkdir -p "$STATE_DIR" 2>/dev/null || true
 

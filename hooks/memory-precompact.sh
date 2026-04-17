@@ -63,7 +63,8 @@ if [ -f "$STATE_FILE" ]; then
         .commits = 0 |
         .files_changed = [] |
         .last_commit = "" |
-        .last_nudge = ($now | tonumber)
+        .last_nudge = ($now | tonumber) |
+        .cycles = 0
     ' "$STATE_FILE" > "$STATE_FILE.tmp" 2>/dev/null && mv "$STATE_FILE.tmp" "$STATE_FILE"
 fi
 
