@@ -82,6 +82,7 @@ This combined with the `tickets` array in frontmatter means multi-day work threa
 | Resource | `Resources/References/` | `{title}.md` |
 | Sub-Agent | `Sub-Agents/` | `{YYYY-MM-DD} {HHMMSS} {task}.md` |
 | Brag | `Brag/` | `{YYYY-MM-DD} {title}.md` |
+| Meeting | `Meetings/` | `{YYYY-MM-DD} {title}.md` |
 
 ### Frontmatter
 
@@ -100,7 +101,7 @@ tags:
 
 ### Tag Taxonomy
 
-**Type tags** (one per note): `#decision`, `#analysis`, `#session`, `#progress`, `#project`, `#resource`, `#subagent`, `#person`, `#preferences`, `#brag`
+**Type tags** (one per note): `#decision`, `#analysis`, `#session`, `#progress`, `#project`, `#resource`, `#subagent`, `#person`, `#preferences`, `#brag`, `#meeting`
 
 **Domain tags** (2-5 per note): `#architecture`, `#security`, `#performance`, `#frontend`, `#backend`, `#devops`, `#testing`, `#documentation`, `#database`, `#api`, `#authentication`, `#mobile`, `#deployment`, `#ai-tools`
 
@@ -262,6 +263,43 @@ People notes must grow as you learn more. When you pick up new information about
 ## Brag Capture
 
 Auto-detect significant accomplishments: shipped features, critical fixes, time/cost savings, architectural wins, team leadership. Create `Brag/{date} {title}.md` with `type: brag`, `quarter: "Q# YYYY"`, what/impact/evidence. Announce: "Captured brag: {title}". Don't capture routine work.
+
+## Meeting Notes
+
+Meeting prep and post-meeting notes live in `Meetings/` and are **intentionally excluded from the dashboard**. They contain sensitive interpersonal strategy (audience posture, framing, what to hold back) that shouldn't be visible on a shared-screen surface.
+
+**Discoverability model**: Meetings are discovered through People notes, not the dashboard. When the user mentions a meeting with someone, check their People note's backlinks for prior meeting notes. This keeps sensitive content cold until deliberately navigated to.
+
+**Location**: `Meetings/{YYYY-MM-DD} {title}.md`
+
+**Frontmatter**:
+```yaml
+---
+type: meeting
+date: YYYY-MM-DD
+time: "HH:MM"
+duration: 30 min
+meeting-type: touchpoint|1on1|standup|review|planning
+attendees:
+  - "[[People/{name}]]"
+project: "[[Claude/Projects/{name}]]"
+tickets: []
+status: prep|completed
+summary: "One-line focus of the meeting"
+tags:
+  - meeting
+---
+```
+
+**Post-meeting**: After the meeting, update `status: completed` and add `## Outcomes` with action items, decisions made, and what worked/didn't. This closes the feedback loop.
+
+**Pattern migration**: Durable patterns about people ("Natalie responds well to data-driven framing", "Scott prefers bottom-line-up-front") should migrate from meeting notes into People notes over time. Meeting notes capture the moment; People notes capture the pattern.
+
+**Privacy rules**:
+- Never surface meeting content in the dashboard, hot cache, or global index
+- Never mention meeting prep strategy in session notes (just "prepped for meeting" is fine)
+- Meeting notes are Tier 3 only - discovered through People backlinks or direct folder navigation
+- The `Meetings/` folder may have its own `_Meeting Index.md` for folder-level browsing, but this is NOT linked from the dashboard's Quick Links footer
 
 ## Commands
 
