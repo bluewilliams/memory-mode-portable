@@ -8,6 +8,9 @@
 #   1. Post-commit: any commit = nudge immediately (bypasses rate limit)
 #   2. Cycle-based: every 3 UserPromptSubmit cycles with any activity = nudge
 #   3. Time-based: 15+ minutes since last nudge with any activity = nudge
+#   4. Pure-conversation: 5+ cycles with zero activity = self-assess nudge
+#      (catches long discussions that produced no file edits but may contain
+#      decisions, findings, or new people worth capturing)
 #
 # NOTE: Do NOT use `set -e` — jq failures must not kill the script.
 
@@ -19,9 +22,10 @@ STATE_DIR=$(get_state_dir 2>/dev/null) || STATE_DIR="$HOME/.claude/.memory-hooks
 STATE_FILE="$STATE_DIR/activity.json"
 
 # Tunable thresholds
-CYCLES_THRESHOLD=3          # nudge every N cycles if activity present
-TIME_THRESHOLD_SEC=900      # 15 min - time-based nudge
-MIN_NUDGE_GAP_SEC=300       # 5 min minimum between non-commit nudges
+CYCLES_THRESHOLD=3              # nudge every N cycles if activity present
+TIME_THRESHOLD_SEC=900          # 15 min - time-based nudge
+MIN_NUDGE_GAP_SEC=300           # 5 min minimum between non-commit nudges
+PURE_CYCLES_THRESHOLD=5         # nudge every N cycles when no file activity
 
 # No state file = nothing to nudge about
 if [ ! -f "$STATE_FILE" ]; then
@@ -82,6 +86,14 @@ elif [ "$ELAPSED" -ge "$MIN_NUDGE_GAP_SEC" ] && [ "$ACTIVITY" -gt 0 ]; then
         else
             NUDGE="<memory-checkpoint reason=\"time-checkpoint\">$MINUTES minutes since last save with $EDITS edit(s) across $FILES_COUNT file(s). Consider a checkpoint to context/current-task.md.</memory-checkpoint>"
         fi
+    fi
+# Priority 4: Pure-conversation - cycles accumulated with zero file activity
+elif [ "$ELAPSED" -ge "$MIN_NUDGE_GAP_SEC" ] && [ "$ACTIVITY" -eq 0 ] && [ "$NEW_CYCLES" -ge "$PURE_CYCLES_THRESHOLD" ]; then
+    REASON="pure-conversation"
+    if [ "$BACKEND" = "obsidian" ]; then
+        NUDGE="<memory-checkpoint reason=\"pure-conversation\" backend=\"obsidian\">$NEW_CYCLES conversation cycles with no file activity. Self-assess: did any decisions, analysis findings, context shifts, or preferences emerge in this discussion? If yes, update the active session note in Sessions/ and the hot cache in .claude-state/{project}/recent.md. Also scan for new people mentioned - if anyone lacks a note in People/, use AskUserQuestion to learn about them. If nothing is worth saving, acknowledge silently and continue.</memory-checkpoint>"
+    else
+        NUDGE="<memory-checkpoint reason=\"pure-conversation\">$NEW_CYCLES conversation cycles with no file activity. If decisions or findings emerged, update context/current-task.md.</memory-checkpoint>"
     fi
 fi
 
