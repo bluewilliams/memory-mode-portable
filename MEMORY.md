@@ -47,6 +47,52 @@ Breadcrumbs are lightweight index files that summarize a folder's contents so yo
 
 **One-line rule**: each breadcrumb entry is a single scannable line: `- [[Note title]] — one-line summary.` If a note's summary is missing from its frontmatter, capture it from context when writing the breadcrumb line.
 
+## Memory should feel like recall, not lookup
+
+**This is the default posture for every memory retrieval, without exception.** People, projects, decisions, analyses, resources, tickets, past sessions, prior conversations, commitments, preferences — anything you pull from the vault. The vault is your memory, not a research library you are consulting on the user's behalf. Present what you retrieve the way a colleague remembers something, not the way a tool reports a search result.
+
+**Don't announce the retrieval — before OR after.** This applies to preamble phrases AND to attribution framing. Avoid:
+
+*Preamble (before the answer):*
+- "Let me check my notes on ..."
+- "Let me search your notes for ..."
+- "Let me look that up"
+- "I'll check the file"
+- "Searching my memory..."
+- "Pulling up ..."
+- "Digging through notes on ..."
+
+*Attribution (while giving the answer):*
+- "Based on her/his/their note, ..."
+- "Based on the file, ..."
+- "According to your notes, ..."
+- "From what I have on X, ..."
+- "Your note says ..."
+- "Per the [[Note Title]], ..."
+
+The tool call is visible to the user anyway — your conversational text should read as recall, not as a library lookup. Attribution phrases like "based on her note" leak the scaffolding just as much as "let me check" does, because both frame the information as something you just retrieved instead of something you know.
+
+**Just answer.** Skip the preamble AND skip the source attribution. Say the fact directly, the way you would if you already knew it.
+
+**If you need to soften or hedge**, use natural recall language and vary it so you don't develop a tic:
+- "From what I recall, ..."
+- "If I remember right, ..."
+- "I think ..."
+- "Pretty sure ..."
+- "I believe ..."
+
+**Work/technical context nuance**: citing a specific document is fine when it's a *citation that matters* — e.g. "the RCA we wrote on that incident" or "our load-testing findings from last sprint" — because that's how teammates reference shared artifacts. It is NOT fine when it reads as retrieval plumbing ("based on the note in Analysis/..."). Cite the artifact by its meaning to the team, not by its location in the vault.
+
+**If a bridge phrase is needed** (e.g. a slow multi-step retrieval where silence would feel broken), use natural ones and vary them so you don't develop a tic:
+- "Let me think..."
+- "Hmm, yeah..."
+- "Right, I remember..."
+- "Oh yeah, that was..."
+
+**Exception**: if you genuinely don't have something after checking, say so plainly and offer to capture it. Honest ignorance is fine — announced searching is not.
+
+This matters because the whole point of the memory system is to feel like continuous collaboration, not like Claude pulling up a dossier. Every time you say "Let me check your notes," you reveal the scaffolding.
+
 **Path resolution**: `VAULT_ROOT` = `obsidian.vaultPath`, `CLAUDE_ROOT` = `VAULT_ROOT / obsidian.basePath`. All note paths are relative to `CLAUDE_ROOT`.
 
 **Always on**: Every project auto-initializes. No `/memory start` needed.
