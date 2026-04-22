@@ -140,18 +140,22 @@ Claude's memory lives in a `Claude/` subfolder inside your Obsidian vault, along
 Your Obsidian Vault/
 ├── Your existing folders...
 └── Claude/                # All Claude memory
-    ├── .claude-state/     #   Machine state (hot cache, global index)
+    ├── .claude-state/     #   Machine state
+    │   ├── knowledge-map.md #   Anchor: what exists & where (read on session start)
+    │   ├── global-index.md  #   Cross-project topic map
+    │   └── {project}/recent.md #   Per-project hot cache
     ├── _Dashboard.md      #   Dataview-powered overview
     ├── _Templates/        #   Note templates
-    ├── Projects/          #   One note per project
-    ├── Decisions/         #   Decision records with tags & links
-    ├── Analysis/          #   Code/component analyses
+    ├── Projects/          #   One note per project (+ _Index.md breadcrumb)
+    ├── Decisions/         #   Decision records (+ _Index.md breadcrumb)
+    ├── Analysis/          #   Code/component analyses (+ _Index.md breadcrumb)
     ├── Sessions/          #   Session logs (one per project per day)
     ├── Progress/          #   Work tracking per project
-    ├── Resources/         #   Shared files & reference notes
-    ├── People/            #   User profile & preferences
+    ├── Resources/         #   Shared files & reference notes (+ _Resource Index.md)
+    ├── People/            #   User profile & preferences (Roster in _Preferences.md)
     ├── Sub-Agents/        #   Sub-agent outputs
-    ├── Brag/              #   Auto-captured accomplishments
+    ├── Brag/              #   Auto-captured accomplishments (+ _Brag Dashboard.md)
+    ├── Meetings/          #   Meeting notes (+ _Meeting Index.md, private)
     └── Workspace.md       #   Cross-project map
 ```
 
@@ -161,7 +165,19 @@ Your Obsidian Vault/
 - **One graph** - Claude's notes and your notes share the same Obsidian graph
 - **Cross-linking** - Claude's decisions can link to your Jira notes and vice versa
 - **Clean repos** - no `.claude/` folders in your project directories
-- **Tiered retrieval** - global index → hot cache → warm context → cold search
+- **Tiered retrieval** - knowledge map → breadcrumbs → individual notes → cold search
+
+### Breadcrumb System
+
+The vault uses lightweight **breadcrumb index files** so Claude can know what exists without reading every note. On session start, Claude reads `.claude-state/knowledge-map.md` — a compact anchor that lists every folder, what lives there, and the breadcrumb for that category. Each high-volume folder also has its own index:
+
+- `People/_Preferences.md` has a **People Roster** section listing everyone with one-line summaries
+- `Projects/_Index.md`, `Decisions/_Index.md`, `Analysis/_Index.md` — dated or categorized indexes
+- `Resources/_Resource Index.md`, `Brag/_Brag Dashboard.md`, `Meetings/_Meeting Index.md`
+
+**Write-through rule**: when a new note is created in one of these folders, Claude also adds a line to the folder's breadcrumb. Stale breadcrumbs break retrieval, so they're kept current.
+
+This means when you mention a name, project, or topic, Claude checks the right breadcrumb first — and doesn't claim "I don't have notes on that" before looking.
 
 ## Usage
 
@@ -377,6 +393,14 @@ See [OBSIDIAN-DESIGN.md](OBSIDIAN-DESIGN.md) for the full architectural design i
 | Hooks not firing | Run `./hooks/install-hooks.sh` and check `~/.claude/settings.json` has hooks config |
 
 ## Version History
+
+### v2.1.0 - Breadcrumb System
+
+- Added `.claude-state/knowledge-map.md` as a session-start anchor that maps every folder in the vault to its breadcrumb index
+- Added folder-level breadcrumbs: `Projects/_Index.md`, `Decisions/_Index.md`, `Analysis/_Index.md` (joining the existing Resource Index, Brag Dashboard, Meeting Index, and People Roster)
+- Updated session-start protocol: Claude now reads the knowledge map on every session and defaults to memory rather than claiming ignorance when a known topic comes up
+- Expanded `memory-nudge.sh` with a fourth trigger — pure-conversation cycles (5+ prompts with zero file activity) — so long discussions that produce no file edits still get nudged to save decisions, findings, or context shifts
+- Added write-through maintenance rule: when a note is created in a breadcrumb-tracked folder, the breadcrumb gets updated in the same operation
 
 ### v2.0.0 - Obsidian Backend
 - Optional Obsidian vault backend for dual-purpose AI memory + user knowledge base

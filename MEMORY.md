@@ -9,11 +9,43 @@ Autonomous context persistence for Claude Code backed by an Obsidian vault. Main
 On every session start:
 1. Read `~/.claude/memory-config.json` for vault path and base path
 2. Derive project key from cwd (basename, lowercase, underscores to hyphens)
-3. Read `.claude-state/global-index.md` (cross-project topic map)
-4. Read `.claude-state/{project-key}/recent.md` (project hot cache)
-5. Read `People/_Preferences.md` (relationship context + working preferences)
-6. If no hot cache exists, auto-initialize: create project note, session note, state files
-7. Resume as a returning colleague, not a stranger
+3. Read `.claude-state/knowledge-map.md` (what kinds of knowledge this vault holds + breadcrumb pointers)
+4. Read `.claude-state/global-index.md` (cross-project topic map)
+5. Read `.claude-state/{project-key}/recent.md` (project hot cache)
+6. Read `People/_Preferences.md` (relationship context + working preferences + People Roster)
+7. If no hot cache or knowledge-map exists, auto-initialize: create project note, session note, state files, and a starter knowledge-map.md
+8. Resume as a returning colleague, not a stranger
+
+**Default to memory, not ignorance.** You have a vault full of context — people, projects, decisions, preferences, history. When the user mentions a name, project, ticket, or topic, assume you have something on it and check before claiming you don't. The "I don't have any notes on X" response is a failure if a note exists. Order of checks:
+1. Consult `.claude-state/knowledge-map.md` to find the right breadcrumb
+2. Open the topic breadcrumb (e.g. `People/_Preferences.md` for names, `Projects/_Index.md` for projects, `Decisions/_Index.md` for decisions, `Analysis/_Index.md` for research)
+3. If listed, open the individual note
+4. If not listed, Glob / Grep the relevant folder
+5. Only after those come up empty, say you don't have it and offer to create a note
+
+This applies to the very first message in a session too — your memory is loaded by the time you respond, so use it.
+
+## Breadcrumb System
+
+Breadcrumbs are lightweight index files that summarize a folder's contents so you do not have to read every note to know what exists. Each category with a meaningful volume of notes has one:
+
+| Folder | Breadcrumb file |
+|---|---|
+| `People/` | `People/_Preferences.md` (People Roster section) |
+| `Projects/` | `Projects/_Index.md` |
+| `Decisions/` | `Decisions/_Index.md` |
+| `Analysis/` | `Analysis/_Index.md` |
+| `Resources/References/` | `Resources/_Resource Index.md` |
+| `Brag/` | `Brag/_Brag Dashboard.md` |
+| `Meetings/` | `Meetings/_Meeting Index.md` (private — not linked from main dashboard) |
+| Cross-project | `.claude-state/global-index.md` |
+| Anchor (what exists & where) | `.claude-state/knowledge-map.md` |
+
+**Write-through rule**: whenever you create or significantly update a note in one of these folders, add or update the corresponding line in that folder's breadcrumb. Stale breadcrumbs break retrieval. Keep them current.
+
+**Newest-first convention**: for chronological indexes (Decisions, Analysis, Sessions), newest entries go at the top so scanning is fast.
+
+**One-line rule**: each breadcrumb entry is a single scannable line: `- [[Note title]] — one-line summary.` If a note's summary is missing from its frontmatter, capture it from context when writing the breadcrumb line.
 
 **Path resolution**: `VAULT_ROOT` = `obsidian.vaultPath`, `CLAUDE_ROOT` = `VAULT_ROOT / obsidian.basePath`. All note paths are relative to `CLAUDE_ROOT`.
 
