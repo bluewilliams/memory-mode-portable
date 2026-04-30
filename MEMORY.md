@@ -125,6 +125,8 @@ Every note MUST have:
 3. A descriptive H1 title
 4. Tags from the taxonomy below
 
+**No em dashes**: Do not use em dashes (`—`) anywhere in vault notes (frontmatter, body, headings, breadcrumb lines). Use a regular hyphen (`-`), a colon, parentheses, or split into two sentences. Hyphens are fine. This applies to ALL note types and ALL files written into the vault, including this MEMORY.md and any breadcrumb / index files. When editing an existing note that contains em dashes, replace them as part of the edit. Reason: Blue does not want AI-flavored prose in his vault, and em dashes are a tell.
+
 **Write-through rule**: When you link to a note that doesn't exist, write it immediately OR create a stub (`status: stub` + one-line summary). Empty notes are failures. Stubs are todos.
 
 **Session date rule**: One session note per project per day. Never amend a previous day's.
