@@ -32,18 +32,26 @@ SORT date DESC
 
 ## Active Investigations
 
-Investigation hubs (`#investigation` tag) with their linked session counts. Click a hub to see its full timeline; the hub note auto-finds every session that links to it.
+Investigation hubs (Analysis notes with `status: living` or `active`) with their linked session counts. Click a hub to see its full timeline; the hub note auto-finds every session that links to it.
 
-```dataview
-TABLE WITHOUT ID
-  file.link AS "Investigation",
-  summary AS "Focus",
-  status AS "Status",
-  length(filter(dv.pages('#session'), s => contains(string(s.investigates), file.name))) AS "Sessions"
-FROM #investigation OR #analysis
-WHERE (status = "living" OR status = "active") AND !contains(file.path, "_Templates")
-SORT length(filter(dv.pages('#session'), s => contains(string(s.investigates), file.name))) DESC
-LIMIT 8
+```dataviewjs
+const hubs = dv.pages('"Claude/Analysis"')
+  .where(p => (p.status === "living" || p.status === "active") && !p.file.path.includes("_Templates"));
+
+const sessions = dv.pages('#session')
+  .where(s => !s.file.path.includes("_Templates"));
+
+const rows = hubs.map(h => {
+  const count = sessions.where(s => {
+    if (!s.investigates) return false;
+    return String(s.investigates).includes(h.file.name);
+  }).length;
+  return [h.file.link, h.summary || "", h.status || "", count];
+});
+
+const sorted = rows.array().sort((a, b) => b[3] - a[3]).slice(0, 8);
+
+dv.table(["Investigation", "Focus", "Status", "Sessions"], sorted);
 ```
 
 ## Today and Yesterday
