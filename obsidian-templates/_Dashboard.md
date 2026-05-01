@@ -30,6 +30,39 @@ WHERE status = "stub" AND !contains(file.path, "_Templates")
 SORT date DESC
 ```
 
+## Active Investigations
+
+Investigation hubs (`#investigation` tag) with their linked session counts. Click a hub to see its full timeline; the hub note auto-finds every session that links to it.
+
+```dataview
+TABLE WITHOUT ID
+  file.link AS "Investigation",
+  summary AS "Focus",
+  status AS "Status",
+  length(filter(dv.pages('#session'), s => contains(string(s.investigates), file.name))) AS "Sessions"
+FROM #investigation OR #analysis
+WHERE (status = "living" OR status = "active") AND !contains(file.path, "_Templates")
+SORT length(filter(dv.pages('#session'), s => contains(string(s.investigates), file.name))) DESC
+LIMIT 8
+```
+
+## Today and Yesterday
+
+What was touched in the last 48 hours, across all categories. Useful for "where did I leave off."
+
+```dataview
+TABLE WITHOUT ID
+  file.link AS "Note",
+  summary AS "Focus",
+  type AS "Type",
+  project AS "Project"
+FROM ""
+WHERE type AND !contains(file.path, "_Templates") AND !contains(file.path, ".claude-state")
+WHERE file.mtime >= date(today) - dur(2 days)
+SORT file.mtime DESC
+LIMIT 12
+```
+
 ## Active Sessions
 
 ```dataview
@@ -172,4 +205,4 @@ LIMIT 10
 
 ---
 
-*Quick links: [[Claude/Workspace|Workspace]] | [[Claude/People/_Preferences|Preferences]] | [[Claude/Brag/_Brag Dashboard|Brag Dashboard]] | [[Claude/Resources/_Resource Index|Resources]]*
+*Quick links: [[Claude/Workspace|Workspace]] | [[Claude/People/Blue Williams|Profile]] | [[Claude/People/_Preferences|Preferences]] | [[Claude/Brag/_Brag Dashboard|Brag Dashboard]] | [[Claude/Resources/_Resource Index|Resources]]*

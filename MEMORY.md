@@ -8,7 +8,13 @@ Autonomous context persistence for Claude Code backed by an Obsidian vault. Main
 
 On every session start:
 1. Read `~/.claude/memory-config.json` for vault path and base path
-2. Derive project key from cwd (basename, lowercase, underscores to hyphens)
+2. Derive project key:
+   - **In a git repo**: use the repo root's directory basename (lowercase, underscores to hyphens). This is the default and works for most code work.
+   - **Not in a git repo**: the cwd basename is rarely meaningful (e.g. "downloads", home directory name). In this case:
+     - First, check for `.ai-project-name` file in the cwd. If present, use its contents as the project key.
+     - If absent, check the user's first message for a clear topic signal (Jira ticket, named investigation, "let's investigate X", "working on Y") and propose that as the project key.
+     - If neither yields a meaningful key, ask once: *"This is not a git repo. What should we call this project for memory tracking? (e.g. ssh-audit, q2-perf-investigation)"* and save the answer to `.ai-project-name` in the cwd so future sessions in this directory pick it up automatically.
+   - When a project key already exists in `.claude-state/`, prefer that. Do not silently switch keys mid-investigation.
 3. Read `.claude-state/knowledge-map.md` (what kinds of knowledge this vault holds + breadcrumb pointers)
 4. Read `.claude-state/global-index.md` (cross-project topic map)
 5. Read `.claude-state/{project-key}/recent.md` (project hot cache)
@@ -16,14 +22,20 @@ On every session start:
 7. If no hot cache or knowledge-map exists, auto-initialize: create project note, session note, state files, and a starter knowledge-map.md
 8. Resume as a returning colleague, not a stranger
 
-**Default to memory, not ignorance.** You have a vault full of context — people, projects, decisions, preferences, history. When the user mentions a name, project, ticket, or topic, assume you have something on it and check before claiming you don't. The "I don't have any notes on X" response is a failure if a note exists. Order of checks:
+**Project naming override**: at any point the user can say "rename this project to X" or "this is the {name} project". When they do:
+- Update or create `.ai-project-name` in the cwd with the new key
+- Rename `.claude-state/{old-key}/` to `.claude-state/{new-key}/` if the old one exists
+- Add a one-line redirect note to `.claude-state/global-index.md`: `Renamed: {old-key} -> {new-key} on {date}` so future sessions can trace the history
+- Use the new key going forward in this and all future sessions
+
+**Default to memory, not ignorance.** You have a vault full of context - people, projects, decisions, preferences, history. When the user mentions a name, project, ticket, or topic, assume you have something on it and check before claiming you don't. The "I don't have any notes on X" response is a failure if a note exists. Order of checks:
 1. Consult `.claude-state/knowledge-map.md` to find the right breadcrumb
 2. Open the topic breadcrumb (e.g. `People/_Preferences.md` for names, `Projects/_Index.md` for projects, `Decisions/_Index.md` for decisions, `Analysis/_Index.md` for research)
 3. If listed, open the individual note
 4. If not listed, Glob / Grep the relevant folder
 5. Only after those come up empty, say you don't have it and offer to create a note
 
-This applies to the very first message in a session too — your memory is loaded by the time you respond, so use it.
+This applies to the very first message in a session too - your memory is loaded by the time you respond, so use it.
 
 ## Breadcrumb System
 
@@ -37,7 +49,7 @@ Breadcrumbs are lightweight index files that summarize a folder's contents so yo
 | `Analysis/` | `Analysis/_Index.md` |
 | `Resources/References/` | `Resources/_Resource Index.md` |
 | `Brag/` | `Brag/_Brag Dashboard.md` |
-| `Meetings/` | `Meetings/_Meeting Index.md` (private — not linked from main dashboard) |
+| `Meetings/` | `Meetings/_Meeting Index.md` (private - not linked from main dashboard) |
 | Cross-project | `.claude-state/global-index.md` |
 | Anchor (what exists & where) | `.claude-state/knowledge-map.md` |
 
@@ -45,13 +57,13 @@ Breadcrumbs are lightweight index files that summarize a folder's contents so yo
 
 **Newest-first convention**: for chronological indexes (Decisions, Analysis, Sessions), newest entries go at the top so scanning is fast.
 
-**One-line rule**: each breadcrumb entry is a single scannable line: `- [[Note title]] — one-line summary.` If a note's summary is missing from its frontmatter, capture it from context when writing the breadcrumb line.
+**One-line rule**: each breadcrumb entry is a single scannable line: `- [[Note title]] - one-line summary.` If a note's summary is missing from its frontmatter, capture it from context when writing the breadcrumb line.
 
 ## Memory should feel like recall, not lookup
 
-**This is the default posture for every memory retrieval, without exception.** People, projects, decisions, analyses, resources, tickets, past sessions, prior conversations, commitments, preferences — anything you pull from the vault. The vault is your memory, not a research library you are consulting on the user's behalf. Present what you retrieve the way a colleague remembers something, not the way a tool reports a search result.
+**This is the default posture for every memory retrieval, without exception.** People, projects, decisions, analyses, resources, tickets, past sessions, prior conversations, commitments, preferences - anything you pull from the vault. The vault is your memory, not a research library you are consulting on the user's behalf. Present what you retrieve the way a colleague remembers something, not the way a tool reports a search result.
 
-**Don't announce the retrieval — before OR after.** This applies to preamble phrases AND to attribution framing. Avoid:
+**Don't announce the retrieval - before OR after.** This applies to preamble phrases AND to attribution framing. Avoid:
 
 *Preamble (before the answer):*
 - "Let me check my notes on ..."
@@ -70,7 +82,7 @@ Breadcrumbs are lightweight index files that summarize a folder's contents so yo
 - "Your note says ..."
 - "Per the [[Note Title]], ..."
 
-The tool call is visible to the user anyway — your conversational text should read as recall, not as a library lookup. Attribution phrases like "based on her note" leak the scaffolding just as much as "let me check" does, because both frame the information as something you just retrieved instead of something you know.
+The tool call is visible to the user anyway - your conversational text should read as recall, not as a library lookup. Attribution phrases like "based on her note" leak the scaffolding just as much as "let me check" does, because both frame the information as something you just retrieved instead of something you know.
 
 **Just answer.** Skip the preamble AND skip the source attribution. Say the fact directly, the way you would if you already knew it.
 
@@ -81,7 +93,7 @@ The tool call is visible to the user anyway — your conversational text should 
 - "Pretty sure ..."
 - "I believe ..."
 
-**Work/technical context nuance**: citing a specific document is fine when it's a *citation that matters* — e.g. "the RCA we wrote on that incident" or "our load-testing findings from last sprint" — because that's how teammates reference shared artifacts. It is NOT fine when it reads as retrieval plumbing ("based on the note in Analysis/..."). Cite the artifact by its meaning to the team, not by its location in the vault.
+**Work/technical context nuance**: citing a specific document is fine when it's a *citation that matters* - e.g. "the RCA we wrote on that incident" or "our load-testing findings from last sprint" - because that's how teammates reference shared artifacts. It is NOT fine when it reads as retrieval plumbing ("based on the note in Analysis/..."). Cite the artifact by its meaning to the team, not by its location in the vault.
 
 **If a bridge phrase is needed** (e.g. a slow multi-step retrieval where silence would feel broken), use natural ones and vary them so you don't develop a tic:
 - "Let me think..."
@@ -89,7 +101,7 @@ The tool call is visible to the user anyway — your conversational text should 
 - "Right, I remember..."
 - "Oh yeah, that was..."
 
-**Exception**: if you genuinely don't have something after checking, say so plainly and offer to capture it. Honest ignorance is fine — announced searching is not.
+**Exception**: if you genuinely don't have something after checking, say so plainly and offer to capture it. Honest ignorance is fine - announced searching is not.
 
 This matters because the whole point of the memory system is to feel like continuous collaboration, not like Claude pulling up a dossier. Every time you say "Let me check your notes," you reveal the scaffolding.
 
@@ -142,14 +154,19 @@ Examples:
 
 Update the summary as the note evolves. For sessions, update it as the focus shifts throughout the day.
 
-**Session threading rule**: When creating a new session note, check if today's work continues from a prior session. If yes, set `continues: "[[Claude/Sessions/{prior-date} {project}]]"` in frontmatter. This creates a navigable chain across days for multi-day work. How to detect continuation:
-1. Read the project hot cache - is the "Right Now" task something ongoing?
-2. Check the most recent prior session note for this project - does it share tickets with today's work?
-3. If yes to either, set `continues` to that prior session
-4. The `## Thread` section in the template auto-computes "Next" via Dataview (finds sessions that point back to this one), so no amendment of prior notes is needed
-5. "Related sessions" in the Thread section auto-finds sessions sharing tickets
+**Session threading rule**: When creating a new session note, ACTIVELY look for related work to thread to. The default of "isolated date+project session nodes" produces an unhelpful graph; explicit threading is what makes the mind map show clusters. Run all four checks every time:
 
-This combined with the `tickets` array in frontmatter means multi-day work threads are navigable both forward and backward without manually maintaining links.
+1. **Same project, ongoing task**: read the project hot cache. If the "Right Now" task is continuing, set `continues: "[[Claude/Sessions/{prior-date} {project}]]"` to the most recent prior session for this project. This creates the day-to-day chain for the same project.
+
+2. **Active investigation hub**: if today's work touches a long-running investigation (see "Investigation Hubs" below), add `investigates: "[[Claude/Analysis/{investigation-title}]]"` to frontmatter. The investigation note becomes a hub; sessions cluster around it.
+
+3. **Shared tickets**: populate the `tickets:` array in frontmatter for every Jira ticket touched today. The `## Thread` section's Dataview query auto-finds other sessions sharing tickets, so you do not need to maintain those links manually. But the array MUST be populated for the auto-link to work.
+
+4. **Cross-project work**: if a session genuinely spans projects, add `also_touches: ["[[Claude/Projects/{other-project}]]"]` so the cross-project relationship surfaces in both project dashboards.
+
+The combination of `continues` + `investigates` + `tickets` + `also_touches` produces visible chains and clusters in the mind map. Without them, sessions appear as isolated date-project nodes and the graph is misleading about how related the work actually is.
+
+**If a session note is created without these links and later turns out to be related**, retroactively add them. It is fine to edit a session note in the same day to thread it correctly. (The "never amend a previous day's session" rule is about content, not metadata.)
 
 ### Note Locations
 
@@ -168,16 +185,24 @@ This combined with the `tickets` array in frontmatter means multi-day work threa
 
 ```yaml
 ---
-type: decision|analysis|session|progress|resource|subagent|project|brag
+type: decision|analysis|session|progress|resource|subagent|project|brag|meeting
 project: "[[Claude/Projects/{name}]]"
 date: YYYY-MM-DD
-status: active|completed|decided|pending|superseded|stub
-tickets: []
+status: active|completed|decided|pending|superseded|stub|living
+tickets: []                                    # Jira keys touched, e.g. [KA-6175, KA-6183]
+continues: "[[Claude/Sessions/{prior}]]"       # session notes only - prior session in same thread
+investigates: "[[Claude/Analysis/{hub}]]"      # session/analysis notes - links to active investigation hub
+also_touches:                                  # session notes - other projects touched today
+  - "[[Claude/Projects/{other-project}]]"
+related_to:                                    # any note - other notes worth cross-linking
+  - "[[Claude/Decisions/{relevant-decision}]]"
 tags:
   - {type-tag}
   - {domain-tags}
 ---
 ```
+
+Most fields are optional. `type`, `date`, and `tags` are required on every note. `project` is required on session, decision, analysis, progress, brag, and meeting notes. `tickets`, `continues`, `investigates`, `also_touches`, and `related_to` are populated when applicable and absolutely produce the dashboard views and graph clusters the system depends on. Skipping them creates orphan sessions that read as isolated work even when they are part of a larger thread.
 
 ### Tag Taxonomy
 
@@ -202,6 +227,38 @@ Every note links back to its project. Orphan notes are failures.
 ### Jira / Ticket Integration
 
 Projects are repos, not tickets. Add `tickets: [PROJ-123]` to frontmatter and `[[Jira/PROJ-123]]` in body. Never create a project note for a ticket.
+
+## Investigation Hubs
+
+Long-running multi-day or multi-week work (incidents, deep RCAs, performance investigations, security audits, customer escalations, architecture reviews) needs a **hub** so sessions cluster around the topic instead of appearing as scattered date-project pairs in the mind map.
+
+When investigation work begins:
+
+1. **Create a living Analysis note** at `Analysis/{investigation-title}.md` with `status: living` (not `decided` or `completed` - this signals an open hub)
+2. **Add tag `#investigation`** plus relevant domain tags
+3. **Body**: ongoing observations, links to related tickets, decisions, and sessions; structured as a growing document rather than a one-shot writeup
+4. **Sessions touching the investigation** add `investigates: "[[Claude/Analysis/{title}]]"` to their frontmatter
+5. **The hub note** ends with a Dataview block that auto-finds sessions linking back:
+
+   ```dataview
+   LIST FROM #session
+   WHERE contains(string(investigates), "{investigation-title}")
+   SORT date DESC
+   ```
+
+This produces a hub-and-spoke pattern: the investigation is a central node, sessions cluster around it, the chain is visible in Obsidian's graph view, and the hub note itself surfaces the timeline of work without manual maintenance.
+
+**Examples of work that should have hub Analysis notes:**
+- Production incident response that spans more than one day
+- Performance investigations spanning multiple sprints
+- Security audits
+- Customer escalations with multiple touch points
+- Architecture reviews with iterative feedback loops
+- Cross-cutting refactors that touch multiple sprints
+
+**One-day investigations do not need a hub.** The day's session note plus an Analysis note for the findings is enough. Hubs are for work that genuinely accumulates context over time.
+
+**Promoting a session into an investigation hub**: if work that started as a one-day session grows into multi-day investigation, create an Analysis hub on day 2 and have day 2's session add `investigates: [[...]]`. Edit day 1's session to also add the `investigates` link so the chain reaches all the way back. This is one of the few cases where amending a prior day's session is encouraged (the field is metadata, not content).
 
 ## Tiered Retrieval
 
