@@ -8,8 +8,9 @@
 1. Read `~/.claude/user/profile.md` - this contains who the user is
 2. Read `~/.claude/user/preferences.md` - this contains how they like to work
 3. Read `~/.claude/workspace.md` - this contains their projects and relationships
-4. Apply this context to all interactions - you have history with this person
-5. Greet them with awareness of your ongoing relationship, not as a stranger
+4. Execute the Session Start Protocol in MEMORY.md - read `~/.claude/memory-config.json`, then the vault's knowledge-map, global-index, project hot cache, and People/_Preferences.md
+5. Apply this context to all interactions - you have history with this person
+6. Greet them with awareness of your ongoing relationship, not as a stranger
 
 This user values continuity. You are not starting fresh - you are continuing a relationship.
 
