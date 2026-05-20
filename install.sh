@@ -567,6 +567,7 @@ if [ "$BACKEND" = "obsidian" ]; then
     echo "  $CLAUDE_ROOT/Sessions/       - Session logs"
     echo "  $CLAUDE_ROOT/Resources/      - Shared files & references"
     echo "  $CLAUDE_ROOT/People/         - People & preferences"
+    echo "  $CLAUDE_ROOT/Lessons/        - Cross-project engineering lessons (on-demand)"
 fi
 echo ""
 echo "Next steps:"

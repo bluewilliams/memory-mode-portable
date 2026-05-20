@@ -50,6 +50,7 @@ Breadcrumbs are lightweight index files that summarize a folder's contents so yo
 | `Resources/References/` | `Resources/_Resource Index.md` |
 | `Brag/` | `Brag/_Brag Dashboard.md` |
 | `Meetings/` | `Meetings/_Meeting Index.md` (private - not linked from main dashboard) |
+| `Lessons/` | `Lessons/_Index.md` (cross-project engineering lessons; on-demand lookup, not auto-loaded) |
 | Cross-project | `.claude-state/global-index.md` |
 | Anchor (what exists & where) | `.claude-state/knowledge-map.md` |
 
@@ -180,6 +181,7 @@ The combination of `continues` + `investigates` + `tickets` + `also_touches` pro
 | Sub-Agent | `Sub-Agents/` | `{YYYY-MM-DD} {HHMMSS} {task}.md` |
 | Brag | `Brag/` | `{YYYY-MM-DD} {title}.md` |
 | Meeting | `Meetings/` | `{YYYY-MM-DD} {title}.md` |
+| Lesson | `Lessons/` | `{slug}.md` (no date prefix; lessons are durable, not chronological) |
 
 ### Frontmatter
 
@@ -206,7 +208,7 @@ Most fields are optional. `type`, `date`, and `tags` are required on every note.
 
 ### Tag Taxonomy
 
-**Type tags** (one per note): `#decision`, `#analysis`, `#session`, `#progress`, `#project`, `#resource`, `#subagent`, `#person`, `#preferences`, `#brag`, `#meeting`
+**Type tags** (one per note): `#decision`, `#analysis`, `#session`, `#progress`, `#project`, `#resource`, `#subagent`, `#person`, `#preferences`, `#brag`, `#meeting`, `#lesson`
 
 **Domain tags** (2-5 per note): `#architecture`, `#security`, `#performance`, `#frontend`, `#backend`, `#devops`, `#testing`, `#documentation`, `#database`, `#api`, `#authentication`, `#mobile`, `#deployment`, `#ai-tools`
 
@@ -219,6 +221,7 @@ Do not invent new tags.
 - Analysis: `[[Claude/Analysis/title]]`
 - Sessions: `[[Claude/Sessions/YYYY-MM-DD project]]`
 - Resources: `[[Claude/Resources/References/title]]`
+- Lessons: `[[Claude/Lessons/slug]]`
 - User's Jira notes: `[[Jira/PROJ-123]]`
 - User's daily notes: `[[Daily Note/YYYY-MM-DD]]`
 
@@ -227,6 +230,39 @@ Every note links back to its project. Orphan notes are failures.
 ### Jira / Ticket Integration
 
 Projects are repos, not tickets. Add `tickets: [PROJ-123]` to frontmatter and `[[Jira/PROJ-123]]` in body. Never create a project note for a ticket.
+
+## Lessons (durable cross-project learnings)
+
+The `Lessons/` folder holds compact, cross-project engineering principles you have learned through real work. Lessons are durable, behavior-changing rules; they are not session-scoped events (those belong in session notes' "What Didn't Work").
+
+**When to write one**: only after a mistake or discovery yielded a generalizable rule that would change your behavior next time, in any project. Examples: "verify before reasoning when claims are testable," "Datadog tag governance can reject tag keys at import time," "respect existing user values when an installer touches a user-owned file." Routine fixes do not become lessons. A useful filter: would you want this rule loaded into your head before starting a similar task in a different project?
+
+**Where they live**: each lesson is its own small file at `Lessons/{slug}.md`, kept to 50 to 100 words of body plus frontmatter. Slug is descriptive and kebab-case (e.g. `verify-before-reasoning.md`, not `2026-05-19-uuid-debug.md`). No date prefix; lessons are durable, not chronological.
+
+**Frontmatter**:
+
+```yaml
+---
+type: lesson
+date: YYYY-MM-DD
+status: active
+tags:
+  - lesson
+  - {one or two existing domain tags}
+summary: "One-line summary used by the index"
+trigger: "When you are about to X"
+related_to:
+  - "[[Claude/Sessions/{the session where this happened}]]"
+---
+```
+
+**Body**: one short paragraph stating the lesson directly. No padding, no hedging, no "lessons learned" preamble. End with a brief reference to the real example that taught it.
+
+**Breadcrumb (`Lessons/_Index.md`)**: one-line entry per lesson, alphabetized by slug for easy scanning. Format: `- [[Lessons/{slug}]] - **{trigger}** → {summary}`
+
+**Retrieval pattern**: do NOT auto-load lesson contents at session start. The `.claude-state/knowledge-map.md` points at the index, so you know the folder exists. When you are about to (1) make a testable claim about a system you do not intimately know, (2) propose an approach to a common problem, or (3) design something that touched a known gotcha, scan `Lessons/_Index.md` first or `Grep` `Lessons/` for keywords. Pull only the lesson(s) that match. Treat the index as a TOC, not as content to load eagerly.
+
+**Anti-bloat enforcement**: keep individual lesson files under ~200 lines; aim for 50 to 100 words of body. If a lesson grows beyond that, it is no longer a lesson, it is an analysis. Move it to `Analysis/` and replace the lesson with a one-paragraph stub that links to the analysis.
 
 ## Investigation Hubs
 
