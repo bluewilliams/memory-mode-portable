@@ -123,6 +123,19 @@ See [Auto-Save Hooks](#auto-save-hooks) for details on what the hooks do.
 
 **If you already have a `~/.claude/settings.json`**: The installer will update the hook scripts but won't overwrite your settings. It'll tell you if you need to add the hooks config manually.
 
+### Anthropic Auto-Memory
+
+Claude Code ships with its own auto-memory feature (`autoMemoryEnabled`, default `true`) that reads from and writes to `~/.claude/memory/`. memory-mode-portable IS your memory system - running both side-by-side double-loads context, makes `/memory` ambiguous (Anthropic's command vs ours), and dilutes the single-source-of-truth design.
+
+The installer disables Anthropic's auto-memory gracefully:
+
+- **Fresh install** (no `~/.claude/settings.json`): the template ships with `"autoMemoryEnabled": false`.
+- **Existing install with no opinion on the key**: the installer adds `"autoMemoryEnabled": false` and writes a `.bak` of your prior settings first.
+- **Existing install where you've already set the key yourself** (`true` or `false`): the installer leaves your choice alone and prints what it found.
+- **Malformed settings.json**: the installer warns and skips - your file is never touched.
+
+To re-enable Anthropic's auto-memory at any time, edit `~/.claude/settings.json` and set `"autoMemoryEnabled": true`. The installer will never override an explicit setting you have made.
+
 ## How It Works
 
 ### Architecture

@@ -430,6 +430,7 @@ SETTINGS_FILE="$CLAUDE_DIR/settings.json"
 if [ ! -f "$SETTINGS_FILE" ]; then
     cat > "$SETTINGS_FILE" << 'HOOKEOF'
 {
+  "autoMemoryEnabled": false,
   "hooks": {
     "PostToolUse": [
       {
@@ -477,6 +478,62 @@ else
         echo "  Run ./hooks/install-hooks.sh for merge instructions, or add manually:"
         echo "  See hooks/install-hooks.sh for the JSON to add."
     fi
+fi
+
+# ─── Disable Anthropic auto-memory ───────────────────────────────────
+# Anthropic ships auto-memory ON by default (autoMemoryEnabled). This system
+# IS the memory layer; running both side-by-side double-loads context and
+# makes /memory ambiguous. We want it off. But this is the user's settings
+# file - if they have already set the key themselves (true OR false), we
+# respect that choice and do not touch it. python3 primary, jq fallback.
+if command -v python3 &> /dev/null; then
+    python3 - "$SETTINGS_FILE" <<'PYEOF' || echo "  WARN: auto-memory config step failed; install continues."
+import json, os, sys, shutil, tempfile
+path = sys.argv[1]
+try:
+    with open(path) as f:
+        data = json.load(f)
+except Exception as e:
+    print(f"  WARN: cannot parse {path} ({e}); skipping autoMemoryEnabled config.")
+    sys.exit(0)
+if not isinstance(data, dict):
+    print(f"  WARN: {path} root is not a JSON object; skipping autoMemoryEnabled config.")
+    sys.exit(0)
+if 'autoMemoryEnabled' in data:
+    print(f"  Anthropic auto-memory: keeping your existing autoMemoryEnabled={str(data['autoMemoryEnabled']).lower()}")
+    sys.exit(0)
+shutil.copy2(path, path + '.bak')
+data['autoMemoryEnabled'] = False
+target_dir = os.path.dirname(path) or '.'
+fd, tmp = tempfile.mkstemp(dir=target_dir, prefix='.settings-', suffix='.tmp')
+try:
+    with os.fdopen(fd, 'w') as f:
+        json.dump(data, f, indent=2)
+        f.write('\n')
+    os.replace(tmp, path)
+except Exception:
+    if os.path.exists(tmp):
+        os.remove(tmp)
+    raise
+print("  Anthropic auto-memory disabled (autoMemoryEnabled: false). Re-enable in ~/.claude/settings.json if desired.")
+PYEOF
+elif command -v jq &> /dev/null; then
+    if jq -e 'has("autoMemoryEnabled")' "$SETTINGS_FILE" > /dev/null 2>&1; then
+        EXISTING_AME=$(jq -r '.autoMemoryEnabled' "$SETTINGS_FILE")
+        echo "  Anthropic auto-memory: keeping your existing autoMemoryEnabled=$EXISTING_AME"
+    else
+        cp "$SETTINGS_FILE" "$SETTINGS_FILE.bak"
+        if jq '. + {autoMemoryEnabled: false}' "$SETTINGS_FILE" > "$SETTINGS_FILE.tmp" 2>/dev/null; then
+            mv "$SETTINGS_FILE.tmp" "$SETTINGS_FILE"
+            echo "  Anthropic auto-memory disabled (autoMemoryEnabled: false). Re-enable in ~/.claude/settings.json if desired."
+        else
+            rm -f "$SETTINGS_FILE.tmp"
+            echo "  WARN: jq merge failed for autoMemoryEnabled; install continues."
+        fi
+    fi
+else
+    echo "  WARN: neither python3 nor jq found; cannot auto-disable Anthropic auto-memory."
+    echo "        Manual fix: add \"autoMemoryEnabled\": false to ~/.claude/settings.json"
 fi
 
 # ─── Summary ─────────────────────────────────────────────────────────
