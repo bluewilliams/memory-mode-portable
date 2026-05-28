@@ -2,19 +2,20 @@
 
 Autonomous context persistence for Claude Code backed by an Obsidian vault. Maintains context across sessions, builds a knowledge base, and deepens the working relationship over time.
 
-**Version**: 2.0.0
+**Version**: 2.1.0
 
 ## Session Start Protocol
 
 On every session start:
 1. Read `~/.claude/memory-config.json` for vault path and base path
-2. Derive project key:
-   - **In a git repo**: use the repo root's directory basename (lowercase, underscores to hyphens). This is the default and works for most code work.
-   - **Not in a git repo**: the cwd basename is rarely meaningful (e.g. "downloads", home directory name). In this case:
-     - First, check for `.ai-project-name` file in the cwd. If present, use its contents as the project key.
-     - If absent, check the user's first message for a clear topic signal (Jira ticket, named investigation, "let's investigate X", "working on Y") and propose that as the project key.
-     - If neither yields a meaningful key, ask once: *"This is not a git repo. What should we call this project for memory tracking? (e.g. ssh-audit, q2-perf-investigation)"* and save the answer to `.ai-project-name` in the cwd so future sessions in this directory pick it up automatically.
-   - When a project key already exists in `.claude-state/`, prefer that. Do not silently switch keys mid-investigation.
+2. Derive project key **by the SUBJECT of the work, not by the current directory**. The key reflects what the session is *about* (a specific app/repo, an investigation, a ticket, an event, a research topic), never merely where the terminal happens to be. This mirrors the Cross-Project Awareness rule ("notes go where they BELONG, not where the terminal is"), applied to key selection itself. Determine it in this order:
+   - **Lead with the subject.** Ask: what is this session actually about? That subject is the project. Everything below is in service of naming that subject consistently; the cwd is at most a hint, never the authority.
+   - **Git repo = a strong hint, not an override.** If the cwd is a git repo *and* the conversation is about that codebase, use the repo root's basename (lowercase, underscores to hyphens) - the common case for code work, and a reliable subject signal. But if the conversation is clearly about a different subject than the repo (a conference, a cross-cutting investigation, another project's incident, ambient research), follow the subject and ignore the repo name.
+   - **Non-git / home directory / other ambient dirs.** The cwd basename here ("downloads", the home-directory name) carries no subject meaning - do not use it. Derive the key purely from the subject: an explicit `.ai-project-name` in the cwd if one exists, else a clear topic signal in the conversation (Jira ticket, named investigation, named event, "working on X"). If the subject is genuinely unclear, ask once: *"What should we call this for memory tracking? (e.g. ssh-audit, opensourcenorth-2026)"*
+   - **Reuse before you create.** Before minting a new key, check the existing project list (`Projects/_Index.md`, `.claude-state/global-index.md`) for a subject match and reuse it. Only create a new key when the subject is genuinely new. This keeps the same work from fragmenting across near-duplicate keys.
+   - **Continuity is gated on subject match, not recency.** Prefer to continue an existing key when the current subject matches that project, and do not switch keys mid-investigation while the subject is unchanged. But do NOT inherit "the most recently active key" just because it exists in `.claude-state/` - that is exactly how unrelated ambient work (conference notes, one-off research) gets vacuumed into whatever project was last touched. A key existing in `.claude-state/` is only a candidate if its subject matches the current work.
+   - **Do not write `.ai-project-name` into the home directory or any multi-topic/ambient directory** - those host many subjects, so pinning them to a single key is wrong and will mis-file future work. Only write `.ai-project-name` into a dedicated, single-subject working directory.
+   - **Linking is independent of the key.** Relating sessions to each other (same thread, shared tickets, cross-project spillover, investigation hubs) is handled by the threading fields `continues` / `investigates` / `tickets` / `also_touches` (see Session threading rule), which are subject-based and do not depend on how the key was derived. Choosing a key by subject loses no linking ability; it makes threading more accurate, because a correctly-subjected session threads to the right siblings.
 3. Read `.claude-state/knowledge-map.md` (what kinds of knowledge this vault holds + breadcrumb pointers)
 4. Read `.claude-state/global-index.md` (cross-project topic map)
 5. Read `.claude-state/{project-key}/recent.md` (project hot cache)
