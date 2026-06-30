@@ -488,3 +488,24 @@ See [OBSIDIAN-DESIGN.md](OBSIDIAN-DESIGN.md) for the full architectural design i
 - Breadcrumb-based compaction detection
 - Per-project data isolation
 - Index auto-management
+
+## Windows Installation
+
+`install.sh` targets Unix-y Claude Code. On Windows two things differ: Claude Code runs hook
+`command`s via cmd/PowerShell (so a bare `.sh` won't execute) and `jq` is usually not on PATH.
+Use the Windows installer instead, from **Git Bash**:
+
+```bash
+# Default backend (~/.claude/projects)
+./install-windows.sh
+
+# Obsidian backend — point at your vault. If the vault lives on a host shared into the VM
+# (e.g. a Parallels share), pass that path; bash resolves it directly:
+./install-windows.sh --obsidian "//Mac/Home/Documents/My Vault/MyVault"
+```
+
+It bundles `jq.exe` into `~/.claude/bin`, installs the hooks plus the `hooks/win-run.sh` wrapper,
+and merges `settings.json` hook commands of the form
+`"…\bash.exe" "…\win-run.sh" <hook>` — so Git bash runs the hook with `jq` on PATH and Claude
+Code's hook JSON piped through on stdin. Existing `settings.json` keys are preserved.
+Requires Git for Windows, Node.js (ships with Claude Code), and curl.
