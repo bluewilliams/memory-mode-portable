@@ -311,13 +311,37 @@ Use the cheapest tier. Never search the whole vault.
 
 **Flow**: Tier 0 → Tier 1 → sufficient? Done. Need more? → Tier 2 → Tier 3.
 
+**Tier-0 hygiene (global-index Topic Map).** The Topic Map is a POINTER index, not a second copy of the notes. Each row is a link to the detail note plus a one-to-few-line current status - keep it that way. Apply the same aging as the hot cache: once a topic's detail note exists, compress its row to the pointer + current status; when a topic is fully closed (shipped, archived, decided-and-done), drop its row (the Analysis/Decisions indexes retain it) or move it under a collapsed `## Topic Map - Archive` heading. A row that has grown into a multi-paragraph retelling has drifted from pointer to duplicate - trim it back to the note link plus the one line that matters now. If the whole file grows unwieldy, the same "detail belongs in the notes, the index points" rule is the fix.
+
 ### Hot Cache Sections
 
-- **Right Now**: Task, blockers, next step (compact markers). `Last verified:` timestamp.
-- **Recent Notes**: Last 10 notes with type and summary
+- **Right Now**: The SINGLE current active task, blockers, next step (compact markers). `Last verified:` timestamp. This is ONE block reflecting present state - REPLACE it as work moves; do NOT stack a new "Right Now" on top of the old one every session. Prior current-states are pruned per Hot Cache Hygiene below (their detail lives in the dated session note they link to).
+- **Open Loops**: One line each for unfinished threads not currently active (uncommitted branches, blocked work, deferred follow-ups). Compressed pointers, not full blocks: `- {YYYY-MM-DD} {title} - {one-line status} -> [[Claude/Sessions/{date} {project}]]`.
+- **Recent Notes**: Last 10 notes with type and summary (hard cap - drop the oldest when adding).
 - **Quick Links**: Session, progress, project paths
 - **Related Projects**: Cross-project context
 - **Relationship Context**: Interpersonal notes that carry forward
+
+### Hot Cache Hygiene (prune rule - run at session start and PreCompact)
+
+The hot cache is Tier 1: a CHEAP current read. It loses that value if it grows without bound (a 140KB cache of month-old, mostly-done state defeats its own purpose). Keep it small and current by aging blocks out. **Age is measured from each block's own dated header; "touched" = a session updated / re-dated that block.** Regularly-worked threads stay warm (each touch resets their age); dormant ones age out. We cannot hook true reads, so the date stamp is the faithful proxy for last-access.
+
+**Prune by DORMANCY, not by count.** The working set can legitimately be large - a user may have 5-10 threads genuinely in flight across a couple of days. Never compress a thread just because there are many; compress a thread because it has gone quiet. Recency is the only lever.
+
+Apply on every session start and in the PreCompact checkpoint, in order:
+
+1. **Keep the current Right Now in full.** Always. Re-date it to today whenever you work its thread.
+2. **Keep EVERY block touched within ~14 days in full - no count cap.** If 10 threads are live this fortnight, the cache holds 10; that is the working set doing its job, not bloat. Do not thin recent breadth.
+3. **Remove DONE / SUPERSEDED blocks older than ~3 days** (once their detail is confirmed persisted - see Durability below). Their detail belongs in the linked session note; the hot cache should not duplicate finished work.
+4. **Compress DORMANT open loops (not touched in ~15-35 days) to one Open Loops line** - date, thread, status, branch, next step, and the session link. Keep enough to resume from. An "open loop" = genuinely unfinished (uncommitted / BUILT-not-committed / blocked / deferred).
+5. **Drop blocks not touched in ~35+ days.** If still a genuine open loop, keep the one Open Loops line; else remove.
+6. **Soft size guide ~20-30KB, dormant-first.** If the cache is large because many threads are genuinely active, that is FINE - do not sacrifice an active thread to hit a number. Only when dormant material is still present does size force a trim. Truly overflowing active work belongs additionally in Progress/ and session notes, never dropped from the cache while active.
+
+**Durability (there may be NO undo - do not assume git or version history exists).** The session note is the system of record; the hot cache is a disposable projection. So BEFORE you compress or drop ANY block, confirm its salient detail is actually IN the session note for its date - not merely that a link exists. If the session note is thin, BACKFILL it first, THEN prune. Do NOT create a separate growing archive file (e.g. `recent-archive.md`): an unread, ever-growing archive recreates the exact bloat this rule removes, one level down. The dated session notes ARE the archive. When unsure whether detail is preserved, keep the fuller entry - err toward retention, especially absent version control.
+
+**Safety (this REFINES "Never delete user content", it does not override it):** only prune Claude-authored status blocks (Right Now / RESUME HERE / LATEST / SUPERSEDED) whose detail is confirmed in a durable note. NEVER delete a user-authored line, a note body, the last remaining record of an open loop, or anything outside these status blocks.
+
+The same principle applies to Tier 0 - see the Topic Map hygiene note under Tiered Retrieval.
 
 ### Search Methods (fastest to slowest)
 
@@ -348,13 +372,13 @@ Notes go where they BELONG, not where the terminal is:
 
 ## Vault Maintenance
 
-**Session start** (~30s): Mark stale active sessions as completed. Verify project note exists. Check hot cache freshness.
+**Session start** (~30s): Mark stale active sessions as completed. Verify project note exists. Check hot cache freshness AND apply Hot Cache Hygiene (prune the current project's `recent.md` per the rule in Tiered Retrieval - drop DONE/SUPERSEDED blocks, compress aging open loops, enforce the ~20KB tripwire). This keeps Tier 1 cheap for the rest of the session.
 
 **Checkpoints**: Fix broken links and formatting in notes being touched.
 
-**Weekly** (7+ days since last): Orphan check, workspace sync, stub cleanup. Write date to `.claude-state/last-maintenance`.
+**Weekly** (7+ days since last): Orphan check, workspace sync, stub cleanup, AND a Topic-Map pass on `global-index.md` (compress rows to pointers, archive closed topics per the Tier-0 hygiene note). Write date to `.claude-state/last-maintenance`.
 
-Fix silently. Don't reorganize without reason. Never delete user content.
+Fix silently. Don't reorganize without reason (an over-grown hot cache or Topic Map IS a reason). Never delete user content - the hot-cache prune only removes Claude-authored status blocks whose detail is preserved in a linked note.
 
 ## Compaction Recovery
 

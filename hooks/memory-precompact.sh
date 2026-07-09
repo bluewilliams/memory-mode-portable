@@ -35,11 +35,12 @@ CONTEXT IS ABOUT TO BE LOST. This is your last chance to save state. Complete AL
 1. UPDATE SESSION NOTE: Write current task, full progress with compact markers, blockers, "What Didn't Work" section, and detailed "Key Context for Recovery" to Sessions/{today} {project}.md
 
 2. UPDATE HOT CACHE: Write .claude-state/{project-key}/recent.md with:
-   - "Right Now" section reflecting exact current state
+   - "Right Now" section REPLACED to reflect exact current state (do NOT stack a new block on top of the old - replace the single current block; demote the prior state to an "Open Loops" one-liner if still unfinished, or drop it if done and its detail is in the session note)
    - "Last verified" timestamp
-   - "Recent Notes" table with last 10 touched notes
+   - "Recent Notes" table with last 10 touched notes (hard cap 10)
    - "Related Projects" if cross-project work happened
    - "Relationship Context" carrying forward interpersonal notes
+   - THEN apply Hot Cache Hygiene (MEMORY.md, Tiered Retrieval): prune by DORMANCY not count - keep EVERY thread touched in ~14d in full (the working set can be large), compress only DORMANT loops (untouched ~15-35d) to one-liners, drop >35d or DONE/SUPERSEDED. BEFORE dropping anything, confirm its detail is IN the dated session note (backfill if thin) - there may be no git undo. Do NOT create a separate archive file; session notes ARE the archive.
 
 3. UPDATE GLOBAL INDEX: Write .claude-state/global-index.md with any new topics, initiative status changes, or recent activity rows
 
