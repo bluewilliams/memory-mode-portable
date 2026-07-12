@@ -10,29 +10,28 @@ aliases:
 
 # Claude Mind - Dashboard
 
-> AI-powered knowledge base. Browse, search, and discover.
+> AI-powered knowledge base. Browse, search, and discover. The **Focus** column is the subject of the work; note links are the receipts.
 
 ---
 
-# Now
+# Working On
 
-## Needs Attention
+The live per-project working state, projected from `Progress/` notes (updated at checkpoints). This is the "what are we working on" surface; everything below is evidence and history.
 
 ```dataview
 TABLE WITHOUT ID
-  file.link AS "Note",
   summary AS "Focus",
-  type AS "Type",
-  project AS "Project",
-  date AS "Date"
-FROM ""
-WHERE status = "stub" AND !contains(file.path, "_Templates")
-SORT date DESC
+  next AS "Next Step",
+  file.link AS "Progress",
+  updated AS "Updated"
+FROM #progress
+WHERE (status = "living" OR status = "active") AND !contains(file.path, "_Templates")
+SORT updated DESC
 ```
 
 ## Active Investigations
 
-Investigation hubs (Analysis notes with `status: living` or `active`) with their linked session counts. Click a hub to see its full timeline; the hub note auto-finds every session that links to it.
+Investigation hubs (Analysis notes with `status: living` or `active`) with their linked session counts. Click a hub for its full timeline.
 
 ```dataviewjs
 const hubs = dv.pages('"Claude/Analysis"')
@@ -46,54 +45,27 @@ const rows = hubs.map(h => {
     if (!s.investigates) return false;
     return String(s.investigates).includes(h.file.name);
   }).length;
-  return [h.file.link, h.summary || "", h.status || "", count];
+  return [h.summary || h.file.name, h.file.link, h.status || "", count];
 });
 
 const sorted = rows.array().sort((a, b) => b[3] - a[3]).slice(0, 8);
 
-dv.table(["Investigation", "Focus", "Status", "Sessions"], sorted);
+dv.table(["Focus", "Investigation", "Status", "Sessions"], sorted);
 ```
 
-## Today and Yesterday
+## This Week's Sessions
 
-What was touched in the last 48 hours, across all categories. Useful for "where did I leave off."
+Sessions from the last 7 days (regardless of status - a day's session is its day's work). Focus first; the filename is just date + project key.
 
 ```dataview
 TABLE WITHOUT ID
-  file.link AS "Note",
   summary AS "Focus",
-  type AS "Type",
-  project AS "Project"
-FROM ""
-WHERE type AND !contains(file.path, "_Templates") AND !contains(file.path, ".claude-state")
-WHERE file.mtime >= date(today) - dur(2 days)
-SORT file.mtime DESC
-LIMIT 12
-```
-
-## Active Sessions
-
-```dataview
-TABLE WITHOUT ID
   file.link AS "Session",
-  summary AS "Focus",
   tickets AS "Tickets",
-  project AS "Project"
+  date AS "Date"
 FROM #session
-WHERE status = "active" AND !contains(file.path, "_Templates")
+WHERE date >= date(today) - dur(7 days) AND !contains(file.path, "_Templates")
 SORT date DESC
-```
-
-## Active Projects
-
-```dataview
-TABLE WITHOUT ID
-  file.link AS "Project",
-  status AS "Status",
-  stack AS "Stack"
-FROM #project
-WHERE status = "active" AND !contains(file.path, "_Templates")
-SORT file.name ASC
 ```
 
 ## Active Threads
@@ -115,32 +87,47 @@ SORT length(rows) DESC
 LIMIT 10
 ```
 
+## Needs Attention
+
+```dataview
+TABLE WITHOUT ID
+  summary AS "Focus",
+  file.link AS "Note",
+  type AS "Type",
+  date AS "Date"
+FROM ""
+WHERE status = "stub" AND !contains(file.path, "_Templates")
+SORT date DESC
+```
+
 ---
 
 # Recent
 
 ## Recently Changed
 
+Real notes only - breadcrumb indexes and meta files are excluded so write-through churn does not eat these slots.
+
 ```dataview
 TABLE WITHOUT ID
-  file.link AS "Note",
   summary AS "Focus",
-  type AS "Type",
-  project AS "Project"
+  file.link AS "Note",
+  type AS "Type"
 FROM ""
-WHERE type AND !contains(file.path, "_Templates") AND !contains(file.path, ".claude-state")
+WHERE type AND type != "index" AND type != "meta"
+  AND !contains(file.path, "_Templates") AND !contains(file.path, ".claude-state")
 SORT file.mtime DESC
-LIMIT 10
+LIMIT 12
 ```
 
 ## Recent Decisions
 
 ```dataview
 TABLE WITHOUT ID
-  file.link AS "Decision",
   summary AS "Focus",
-  project AS "Project",
-  status AS "Status"
+  file.link AS "Decision",
+  status AS "Status",
+  date AS "Date"
 FROM #decision
 WHERE !contains(file.path, "_Templates")
 SORT date DESC
@@ -151,10 +138,10 @@ LIMIT 10
 
 ```dataview
 TABLE WITHOUT ID
-  file.link AS "Analysis",
   summary AS "Focus",
-  project AS "Project",
-  component AS "Component"
+  file.link AS "Analysis",
+  status AS "Status",
+  date AS "Date"
 FROM #analysis
 WHERE !contains(file.path, "_Templates")
 SORT date DESC
@@ -165,9 +152,8 @@ LIMIT 10
 
 ```dataview
 TABLE WITHOUT ID
-  file.link AS "Accomplishment",
   summary AS "Focus",
-  project AS "Project",
+  file.link AS "Accomplishment",
   quarter AS "Quarter"
 FROM #brag
 WHERE !contains(file.path, "_Templates")
@@ -179,10 +165,9 @@ LIMIT 10
 
 ```dataview
 TABLE WITHOUT ID
-  file.link AS "Resource",
   summary AS "Focus",
-  category AS "Category",
-  source AS "Source"
+  file.link AS "Resource",
+  category AS "Category"
 FROM #resource
 WHERE !contains(file.path, "_Templates")
 SORT date DESC
@@ -193,13 +178,24 @@ LIMIT 10
 
 # Reference
 
+## Active Projects
+
+```dataview
+TABLE WITHOUT ID
+  file.link AS "Project",
+  status AS "Status",
+  stack AS "Stack"
+FROM #project
+WHERE status = "active" AND !contains(file.path, "_Templates")
+SORT file.name ASC
+```
+
 ## Sub-Agent Activity
 
 ```dataview
 TABLE WITHOUT ID
-  file.link AS "Output",
   summary AS "Focus",
-  project AS "Project",
+  file.link AS "Output",
   agent AS "Agent"
 FROM #subagent
 WHERE !contains(file.path, "_Templates")

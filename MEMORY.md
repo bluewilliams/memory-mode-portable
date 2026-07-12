@@ -113,6 +113,8 @@ This matters because the whole point of the memory system is to feel like contin
 
 **Opting out**: `/memory stop` (one session), `/memory disable` (permanent), or "off the record" (immediate, no questions).
 
+**Self-contained vaults (standing opt-out)**: If the working directory's own CLAUDE.md declares itself a self-contained memory or persistence system (e.g. an Adventure Mode game vault), treat that as a standing `/memory stop` for the session: do not derive a project key, do not read or write this vault, and do not emit breadcrumbs. Hook nudges (`<memory-checkpoint>`) may fire anyway since hooks are global; let the local system handle them per its own protocol. Sessions working ON such a system's source repo are normal projects and are tracked as usual.
+
 ## Breadcrumb System
 
 Write at END of every response: `<!-- MEMORY_BREADCRUMB: {project-key} YYYY-MM-DDTHH:MM:SSZ obsidian -->`
@@ -144,6 +146,8 @@ Every note MUST have:
 **Write-through rule**: When you link to a note that doesn't exist, write it immediately OR create a stub (`status: stub` + one-line summary). Empty notes are failures. Stubs are todos.
 
 **Session date rule**: One session note per project per day. Never amend a previous day's.
+
+**Progress write-through rule (feeds the dashboard)**: The dashboard's "Working On" table is projected from `Progress/{project}.md` notes (`status: living`, plus `summary`, `next`, and `updated` frontmatter). Whenever the hot cache Right Now materially changes - and at every post-commit / pre-compaction checkpoint - update the project's Progress note: refresh `summary` (current focus), `next` (single next step), `updated` (today), and the Right Now bullets with links to the detail notes. The hot cache is Tier-1 private state; the Progress note is its PUBLIC projection and the only way active work surfaces on the dashboard. A stale Progress note means the dashboard lies about what is being worked on.
 
 **Summary rule (all note types)**: Every note type (session, decision, analysis, brag, resource, subagent) MUST have a `summary` frontmatter field with a one-line description of the focus. This is what the dashboard displays in the "Focus" column across all sections. Without it, the dashboard either shows bare filenames (sessions) or forces users to click each row to understand what it's about.
 
