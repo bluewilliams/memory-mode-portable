@@ -365,6 +365,7 @@ Drop files into `Claude/Resources/` (PDFs, images, documents, code snippets). Te
 
 1. **Open your vault in Obsidian** - you should see a `Claude/` folder with your dashboard, templates, and project structure.
 2. **Open `!Dashboard`** - this is created at your vault root and sorts to the top of the file explorer. It's your single pane of glass for everything Claude is tracking: active sessions, projects, recent decisions, brags, and more. Switch to **Reading View** (`Cmd+E` / `Ctrl+E`) to see the live Dataview tables.
+   - **Searching**: use the dashboard's built-in **filter box** (top of the page) to search within the dashboard - it narrows every section live as you type, matching summaries, note names, tickets, statuses, and types. In-file search (`Cmd+F`) will not match the tables: they are live Dataview projections and the rendered text isn't stored in that file. To search full note content across the vault, use **global search** (`Cmd+Shift+F`); the `_Index.md` breadcrumb files are static, searchable digests of the same content.
 3. **Optional**: Enable the Templates core plugin (Settings -> Core Plugins -> Templates) and set the template folder to `Claude/_Templates` for easy note creation.
 
 ### Recommended Plugins

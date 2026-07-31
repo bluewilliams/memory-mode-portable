@@ -1234,6 +1234,8 @@ Full findings.
 
 ## 8. Dataview Queries & Dashboards
 
+**Dashboards are projections, not searchable text.** Dataview renders query results at view time; the rendered rows are never written into the dashboard file, so neither Obsidian's in-file search (`Cmd+F`) nor global search will match text you can see in a dashboard table. This is inherent to Dataview, not a vault misconfiguration. The design answer is three-fold: (1) the shipped dashboard renders through a single `dataviewjs` block with a built-in filter box that searches within the dashboard itself - every section filters live on summary, note name, tickets, status, and type, which covers the "search this page" need natively; (2) every note type carries a `summary` frontmatter field, and frontmatter IS indexed by global search (`Cmd+Shift+F`), so searching content globally finds the source notes the dashboard rows point at; (3) the breadcrumb `_Index.md` files are static markdown mirrors of the same one-line summaries, fully searchable. The shipped dashboard template carries a collapsed callout telling users this.
+
 ### Main Dashboard
 
 **File**: `_Dashboard.md`
