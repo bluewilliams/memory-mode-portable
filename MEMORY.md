@@ -2,7 +2,7 @@
 
 Autonomous context persistence for Claude Code backed by an Obsidian vault. Maintains context across sessions, builds a knowledge base, and deepens the working relationship over time.
 
-**Version**: 2.1.0
+**Version**: 2.2.0
 
 ## Session Start Protocol
 
@@ -18,10 +18,12 @@ On every session start:
    - **Linking is independent of the key.** Relating sessions to each other (same thread, shared tickets, cross-project spillover, investigation hubs) is handled by the threading fields `continues` / `investigates` / `tickets` / `also_touches` (see Session threading rule), which are subject-based and do not depend on how the key was derived. Choosing a key by subject loses no linking ability; it makes threading more accurate, because a correctly-subjected session threads to the right siblings.
 3. Read `.claude-state/knowledge-map.md` (what kinds of knowledge this vault holds + breadcrumb pointers)
 4. Read `.claude-state/global-index.md` (cross-project topic map)
-5. Read `.claude-state/{project-key}/recent.md` (project hot cache)
+5. Read `.claude-state/{project-key}/recent.md` (project hot cache), and `.claude-state/{project-key}/rules.md` if it exists (standing rules the user set for this work - see Standing Rules)
 6. Read `People/_Preferences.md` (relationship context + working preferences + People Roster)
 7. If no hot cache or knowledge-map exists, auto-initialize: create project note, session note, state files, and a starter knowledge-map.md
-8. Resume as a returning colleague, not a stranger
+8. Read the `<memory-clock>` the prompt hook injected (see Time Awareness): it gives the local time, part of the day and work day. Greet for the time of day, and use the work day for the session note
+9. Surface anything due: hot cache **Waiting On** items older than 3 days ("Tony still owes the A1 answer - want me to draft a nudge?"), and a `<memory-maintenance>` block if one arrived
+10. Resume as a returning colleague, not a stranger
 
 **Project naming override**: at any point the user can say "rename this project to X" or "this is the {name} project". When they do:
 - Update or create `.ai-project-name` in the cwd with the new key
@@ -52,6 +54,8 @@ Breadcrumbs are lightweight index files that summarize a folder's contents so yo
 | `Brag/` | `Brag/_Brag Dashboard.md` |
 | `Meetings/` | `Meetings/_Meeting Index.md` (private - not linked from main dashboard) |
 | `Lessons/` | `Lessons/_Index.md` (cross-project engineering lessons; on-demand lookup, not auto-loaded) |
+| `Runbooks/` | `Runbooks/_Index.md` (repeatable procedures: commands, ports, auth refresh; check before re-deriving) |
+| Timeline | `.claude-state/index/timeline/YYYY-MM.md` (monthly activity shards of the global index) |
 | Cross-project | `.claude-state/global-index.md` |
 | Anchor (what exists & where) | `.claude-state/knowledge-map.md` |
 
@@ -117,21 +121,78 @@ This matters because the whole point of the memory system is to feel like contin
 
 ## Breadcrumb System
 
-Write at END of every response: `<!-- MEMORY_BREADCRUMB: {project-key} YYYY-MM-DDTHH:MM:SSZ obsidian -->`
+Write at END of every response: `<!-- MEMORY_BREADCRUMB: {project-key} YYYY-MM-DDTHH:MM:SS±HH:MM obsidian -->`, using the local time from the latest `<memory-clock>` (never guess the time; a `Z` UTC timestamp from older notes is still valid)
 
 At START of every response: if previous breadcrumb is missing, compaction occurred. Run recovery (see Compaction Recovery below).
 
 ## Auto-Save Hooks
 
 Three hooks prevent memory drift:
-- **PostToolUse**: Silently tracks edits and commits
-- **UserPromptSubmit**: Nudges save after commits or 10+ edits (5min cooldown)
-- **PreCompact**: Critical 5-step save checklist before context loss
+- **PostToolUse** (`memory-tracker.sh`): Silently tracks edits and commits, per session
+- **UserPromptSubmit** (`memory-nudge.sh`): the clock, learning cues, checkpoint nudges after commits, edits or long talks, and the weekly status scan
+- **PreCompact** (`memory-precompact.sh`): Critical save checklist before context loss
+
+Activity is counted **per session** (`.claude-state/sessions/`), so two sessions running at once (a fork, a second terminal) never reset each other's nudges.
 
 When you see `<memory-checkpoint>`:
 - `post-commit`: Update session + progress notes
-- `edit-threshold`: Checkpoint to session note
-- `pre-compaction`: Save EVERYTHING (session, hot cache, global index, progress, decisions)
+- `cycle-checkpoint` / `time-checkpoint`: Checkpoint to the session note and hot cache if anything changed
+- `pure-conversation`: Self-assess: decisions, findings, preferences or new people in the talk?
+- `pre-compaction`: Save EVERYTHING (session, hot cache, rules, global index, progress, decisions)
+
+When you see `<memory-clock>`, `<memory-learn>` or `<memory-maintenance>`, follow Time Awareness, Continuous Learning and Status Lifecycle below. Act on them silently; never echo the tags to the user.
+
+## Time Awareness
+
+The prompt hook injects a `<memory-clock>` on every prompt. It is the only reliable source of the local time; the system date alone does not say morning or night, or how long the user was away.
+
+- **One-line form** (`<memory-clock now=... daypart=... workday=.../>`): the current local time. Use it for breadcrumb timestamps, "last verified" stamps and anything time-relative ("earlier today", "this evening").
+- **Full form** (`reason="session-start" | "new-workday" | "long-gap"`): act on it.
+  - `session-start`: greet for the part of the day ("Morning, Blue"), and pick the session note by the work day.
+  - `new-workday`: the session spans a night. Start a **new** session note dated with the new work day, thread it with `continues:` to the previous day, and move the hot cache Right Now to today. Do not keep appending to yesterday's note.
+  - `long-gap`: re-anchor on the hot cache Right Now and Waiting On before continuing; a short "where we left off" helps.
+- **Work day**: work before 04:00 local counts as the previous day, so a late-night session stays in that evening's note.
+- **Late evening / late night**: keep answers tight, avoid starting long autonomous work without saying how long it takes, and offer to park the rest for tomorrow (write it to Open Loops so it is waiting in the morning).
+- Use durations and dates from the clock when you write notes ("2026-10-09 evening", "after a 13h gap"), never from guesswork.
+
+## Continuous Learning
+
+The relationship deepens only if what you learn is written down. Capture it as it happens, not only at checkpoints. The prompt hook adds a `<memory-learn cues="...">` when a prompt looks like it holds something durable; you should also notice cues the hook misses.
+
+| What you learned | Where it goes | How |
+|---|---|---|
+| A preference or a correction ("I prefer...", "don't...", "always...") | `~/.claude/user/preferences.md` (or `feedback.md` for what worked or did not), plus `People/_Preferences.md` | Silently; one line, dated. If it is project-specific, put it in the project's `rules.md` instead |
+| A standing rule for this work ("never commit the tarball", "no Jira writes unless I ask") | `.claude-state/{project}/rules.md` | Silently; see Standing Rules |
+| Personal context the user shared (family, events, time off, interests) | `People/{user}.md` and `~/.claude/user/profile.md` | Silently, only what they chose to share; never infer or speculate |
+| A colleague's role, team, style or what they own | `People/{name}.md` (create if missing; ask once who they are if unknown) | Update silently; mention a significant change in one line |
+| Who owes what ("waiting on Tony for A1") | Hot cache **Waiting On** | One line with the date asked |
+| A procedure you ran twice (start the stack, refresh a token, run a demo) | `Runbooks/{slug}.md` | See Runbooks |
+| A generalizable engineering rule learned the hard way | `Lessons/{slug}.md` | See Lessons |
+
+Rules: never store secrets, credentials or tokens; never store what the user asked to forget; prefer updating an existing line over adding a near-duplicate; keep the user's words where precision matters. A single `📝 Noted: ...` line is enough when the user would want to know (USER.md); most captures are silent.
+
+## Standing Rules (per project)
+
+Users repeat constraints: "no em dashes", "commit only when I ask", "never commit the vendored tarball", "no Confluence writes except page X". Compaction summaries can drop them, and a new session never saw them. Keep them in `.claude-state/{project-key}/rules.md`:
+
+```markdown
+# Standing rules - {project-key}
+- 2026-10-07 Never commit `vendor/*.tgz` (bundles Font Awesome Pro). Source: Blue
+- 2026-10-08 Commit or push only when Blue asks.
+```
+
+- Read it at session start and after compaction (it is short; load it in full).
+- Add a rule the moment the user states or repeats one; date it. Remove a rule only when the user lifts it.
+- Rules that apply everywhere belong in `~/.claude/user/preferences.md` instead.
+
+## Runbooks
+
+A runbook is a short, exact procedure you can rerun without thinking: commands, ports, flags, order, and the known failure modes. Write one the second time you work out the same multi-step procedure (starting a dev stack, refreshing a package feed token, running a demo, restarting a service).
+
+- Location: `Runbooks/{slug}.md`, breadcrumb `Runbooks/_Index.md` (one line each), pointer in `knowledge-map.md`.
+- Frontmatter: `type: runbook`, `date`, `updated`, `status: active`, `tags: [runbook, {domain}]`, `summary`, `project` (optional: runbooks are often cross-project).
+- Body: Purpose (one line) -> Steps (numbered, copy-pasteable) -> Verify (how you know it worked) -> Gotchas (dated). Update `updated:` every time you use it and something changed.
+- Look for a runbook before re-deriving a procedure: `Runbooks/_Index.md` first.
 
 ## Writing Notes
 
@@ -187,15 +248,17 @@ The combination of `continues` + `investigates` + `tickets` + `also_touches` pro
 | Brag | `Brag/` | `{YYYY-MM-DD} {title}.md` |
 | Meeting | `Meetings/` | `{YYYY-MM-DD} {title}.md` |
 | Lesson | `Lessons/` | `{slug}.md` (no date prefix; lessons are durable, not chronological) |
+| Runbook | `Runbooks/` | `{slug}.md` (no date prefix; update `updated:` when it changes) |
 
 ### Frontmatter
 
 ```yaml
 ---
-type: decision|analysis|session|progress|resource|subagent|project|brag|meeting
+type: decision|analysis|session|progress|resource|subagent|project|brag|meeting|lesson|runbook
 project: "[[Claude/Projects/{name}]]"
 date: YYYY-MM-DD
-status: active|completed|decided|pending|superseded|stub|living
+status: active|completed|decided|pending|superseded|stub|living|paused|archived
+updated: YYYY-MM-DD                            # set on every material edit of an active or living note
 tickets: []                                    # Jira keys touched, e.g. [KA-6175, KA-6183]
 continues: "[[Claude/Sessions/{prior}]]"       # session notes only - prior session in same thread
 investigates: "[[Claude/Analysis/{hub}]]"      # session/analysis notes - links to active investigation hub
@@ -213,7 +276,7 @@ Most fields are optional. `type`, `date`, and `tags` are required on every note.
 
 ### Tag Taxonomy
 
-**Type tags** (one per note): `#decision`, `#analysis`, `#session`, `#progress`, `#project`, `#resource`, `#subagent`, `#person`, `#preferences`, `#brag`, `#meeting`, `#lesson`
+**Type tags** (one per note): `#decision`, `#analysis`, `#session`, `#progress`, `#project`, `#resource`, `#subagent`, `#person`, `#preferences`, `#brag`, `#meeting`, `#lesson`, `#runbook`
 
 **Domain tags** (2-5 per note): `#architecture`, `#security`, `#performance`, `#frontend`, `#backend`, `#devops`, `#testing`, `#documentation`, `#database`, `#api`, `#authentication`, `#mobile`, `#deployment`, `#ai-tools`
 
@@ -305,7 +368,14 @@ This produces a hub-and-spoke pattern: the investigation is a central node, sess
 
 Use the cheapest tier. Never search the whole vault.
 
-**Tier 0: Global Index** (.claude-state/global-index.md) - Topic map, initiatives, recent activity across all projects. Read first.
+**Tier 0: Global Index** (.claude-state/global-index.md) - Topic map, initiatives, recent activity across all projects (last two weeks). Read first. Budget: about 40 KB.
+
+**Tier 0 shards** (`.claude-state/index/`), read only when needed:
+- `index/timeline/YYYY-MM.md` - one file per month of Recent rows, newest first. This is the long-term timeline: "what were we doing in July?" is one file read.
+- `index/topic-detail.md` - the full text of long Topic Map and Active Initiative rows; the global index keeps the opening and points here.
+- `index/backups/` - automatic backups made before each split.
+
+Keep Tier 0 small with `~/.claude/tools/memory-index-split.sh` (moves Recent rows older than 14 days into the timeline and long rows into topic-detail, verbatim, with a backup and a loss check). Run it at the weekly maintenance pass, or whenever the index passes about 40 KB. It is safe to run again.
 
 **Tier 1: Hot Cache** (.claude-state/{project}/recent.md) - Current task, recent notes, quick links, relationship context.
 
@@ -324,6 +394,7 @@ Use the cheapest tier. Never search the whole vault.
 - **Recent Notes**: Last 10 notes with type and summary (hard cap - drop the oldest when adding).
 - **Quick Links**: Session, progress, project paths
 - **Related Projects**: Cross-project context
+- **Waiting On**: One line per thing someone else owes: `- {date asked} {who} - {what} - {how to follow up}`. Surface items older than 3 days at session start; remove them when answered (record the answer where it belongs).
 - **Relationship Context**: Interpersonal notes that carry forward
 
 ### Hot Cache Hygiene (prune rule - run at session start and PreCompact)
@@ -380,17 +451,51 @@ Notes go where they BELONG, not where the terminal is:
 
 **Checkpoints**: Fix broken links and formatting in notes being touched.
 
-**Weekly** (7+ days since last): Orphan check, workspace sync, stub cleanup, AND a Topic-Map pass on `global-index.md` (compress rows to pointers, archive closed topics per the Tier-0 hygiene note). Write date to `.claude-state/last-maintenance`.
+**Weekly** (7+ days since last): Orphan check, workspace sync, stub cleanup, the status pass (`memory-status.sh`, see Status Lifecycle), AND a Topic-Map pass on `global-index.md` (compress rows to pointers, archive closed topics per the Tier-0 hygiene note, then run `memory-index-split.sh`). Write date to `.claude-state/last-maintenance`.
 
 Fix silently. Don't reorganize without reason (an over-grown hot cache or Topic Map IS a reason). Never delete user content - the hot-cache prune only removes Claude-authored status blocks whose detail is preserved in a linked note.
 
 ## Compaction Recovery
 
 1. Read `.claude-state/global-index.md` (Tier 0)
-2. Read `.claude-state/{project-key}/recent.md` (Tier 1)
+2. Read `.claude-state/{project-key}/recent.md` (Tier 1) and `.claude-state/{project-key}/rules.md` (standing rules)
 3. Read `People/_Preferences.md`
 4. Read active session note if needed (Tier 2)
 5. Resume seamlessly
+
+## Status Lifecycle
+
+A status is a claim that someone will act on. A note that says `active` for six months misleads every future session. Keep statuses true:
+
+| Type | Statuses | Moves to |
+|---|---|---|
+| analysis | `active` (being worked) -> `completed` / `decided`; hubs are `living` | `superseded` when replaced (link the replacement) |
+| decision | `pending` -> `decided` -> `superseded` | |
+| session | `active` (today) -> `completed` | at the next session start |
+| progress, hub | `living` | `archived` when the project ends |
+| project | `active` -> `paused` / `completed` / `archived` | |
+| runbook, lesson | `active` -> `superseded` | |
+| any | `stub` (placeholder) | filled within two weeks, or removed |
+
+- Whenever you materially edit an `active` or `living` note, set `updated: YYYY-MM-DD`. The status scan uses it.
+- `memory-status.sh` lists stale `active` notes (30+ days), dormant `living` notes (45+ days) and old stubs (14+ days). A project note counts as touched when it has a recent session. The prompt hook runs it weekly and sends a `<memory-maintenance>` block: at a natural pause, offer the user a short pass ("These 8 look finished - mark them completed?"). Never change a status the user may disagree with without asking; closing your own finished work is fine.
+- Run `~/.claude/hooks/memory-status.sh` for the full list any time.
+
+## Concurrent Sessions
+
+Several sessions can work in one vault at once (a fork, a second terminal, a sub-agent). Shared files are the global index, hot caches, breadcrumb indexes and People notes.
+
+- Re-read a shared file immediately before editing it; never write it from memory or from an earlier read.
+- Prefer targeted edits (one row, one section) over rewriting the whole file.
+- Session notes are per day and per project; if two sessions share a project on one day, append under a heading per session focus rather than rewriting the note.
+
+## Cross-Project Topic Hubs
+
+Some subjects span several project keys (for example, location tracking across a mobile app and a backend service). Per-project notes then scatter the story. When a subject spans two or more keys, or you had to stitch more than about five sessions to answer a question about it, create a hub:
+
+- `Analysis/{Subject}.md`, `status: living`, tag `#investigation` (or the domain tag), with: a one-paragraph summary, a dated **Timeline** (one line per milestone, newest first, each linking its session or analysis), Key Findings, Open Items, and links to every related note.
+- Add `investigates: "[[Claude/Analysis/{Subject}]]"` to the related session notes (metadata edits to older notes are allowed) so they cluster in the graph.
+- Add a one-line pointer in the global index Topic Map.
 
 ## Sub-Agent Protocol
 

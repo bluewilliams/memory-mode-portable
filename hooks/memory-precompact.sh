@@ -11,7 +11,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/memory-common.sh" 2>/dev/null || true
 
 STATE_DIR=$(get_state_dir 2>/dev/null) || STATE_DIR="$HOME/.claude/.memory-hooks"
-STATE_FILE="$STATE_DIR/activity.json"
+INPUT=$(cat 2>/dev/null) || INPUT=""
+SESSION_ID=$(session_id_from_json "$INPUT" 2>/dev/null) || SESSION_ID=""
+STATE_FILE=$(activity_file_for "$STATE_DIR" "$SESSION_ID" 2>/dev/null) || STATE_FILE="$STATE_DIR/activity.json"
 
 EDITS=0
 COMMITS=0
@@ -42,7 +44,9 @@ CONTEXT IS ABOUT TO BE LOST. This is your last chance to save state. Complete AL
    - "Relationship Context" carrying forward interpersonal notes
    - THEN apply Hot Cache Hygiene (MEMORY.md, Tiered Retrieval): prune by DORMANCY not count - keep EVERY thread touched in ~14d in full (the working set can be large), compress only DORMANT loops (untouched ~15-35d) to one-liners, drop >35d or DONE/SUPERSEDED. BEFORE dropping anything, confirm its detail is IN the dated session note (backfill if thin) - there may be no git undo. Do NOT create a separate archive file; session notes ARE the archive.
 
-3. UPDATE GLOBAL INDEX: Write .claude-state/global-index.md with any new topics, initiative status changes, or recent activity rows
+3. UPDATE GLOBAL INDEX: Edit .claude-state/global-index.md (re-read it first; other sessions write it too) with new topic pointers, initiative status changes, and a Recent row. Keep Tier 0 small: move Recent rows older than 14 days to .claude-state/index/timeline/YYYY-MM.md
+
+3b. STANDING RULES AND WAITING ON: if the user set or repeated a rule this session, add it to .claude-state/{project-key}/rules.md; if someone owes an answer, add it to the hot cache Waiting On section
 
 4. UPDATE PROGRESS: Write Progress/{project}.md with current active/completed items
 

@@ -118,6 +118,27 @@ addSection("Active Projects", ["Project", "Status", "Stack"],
     [{ link: p.file.name }, p.status ?? "", txt(p.stack)],
     p.file.name, p.status, p.stack)));
 
+// Runbooks (repeatable procedures, most recently updated first)
+const runbooks = dv.pages("#runbook").where(p => !EXCLUDED(p) && p.status != "superseded")
+  .array().sort((a, b) => ((b.updated ?? b.date)?.toMillis?.() ?? 0) - ((a.updated ?? a.date)?.toMillis?.() ?? 0)).slice(0, 10);
+addSection("Runbooks", ["Procedure", "Runbook", "Updated"],
+  runbooks.map(p => row(
+    [p.summary ?? "", { link: p.file.name }, fmt(p.updated ?? p.date)],
+    p.summary, p.file.name)));
+
+// Needs a Status Decision: notes that still claim to be open but nobody touched (v2.2 status lifecycle).
+// Same thresholds as memory-status.sh: active/pending 30 days, living 45 days, stub 14 days.
+const DAY = 86400000, nowMs = Date.now();
+const touched = p => (p.updated ?? p.date)?.toMillis?.() ?? p.file.mtime.toMillis();
+const limits = { active: 30, pending: 30, "in-progress": 30, open: 30, living: 45, stub: 14 };
+const stale = dv.pages().where(p => !EXCLUDED(p) && p.type != "session" && p.type != "project" && limits[p.status] != null
+    && (nowMs - touched(p)) / DAY > limits[p.status])
+  .array().sort((a, b) => touched(a) - touched(b)).slice(0, 12);
+addSection("Needs a Status Decision", ["Note", "Status", "Last Touched", "Days"],
+  stale.map(p => row(
+    [{ link: p.file.name }, p.status ?? "", fmt(p.updated ?? p.date), String(Math.floor((nowMs - touched(p)) / DAY))],
+    p.file.name, p.status, p.summary)));
+
 // Sub-Agent Activity
 const agents = dv.pages("#subagent").where(p => !EXCLUDED(p))
   .array().sort((a, b) => (b.date?.toMillis?.() ?? 0) - (a.date?.toMillis?.() ?? 0)).slice(0, 10);

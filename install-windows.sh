@@ -75,10 +75,11 @@ EOF
 fi
 
 # 4) hooks + win-run.sh wrapper
-for h in memory-common.sh memory-tracker.sh memory-nudge.sh memory-precompact.sh win-run.sh; do
+for h in memory-common.sh memory-tracker.sh memory-nudge.sh memory-precompact.sh memory-status.sh win-run.sh; do
   cp "$SCRIPT_DIR/hooks/$h" "$CL/hooks/$h"
 done
 chmod +x "$CL/hooks/"*.sh
+mkdir -p "$CL/tools" && cp "$SCRIPT_DIR/tools/memory-index-split.sh" "$CL/tools/" && chmod +x "$CL/tools/"*.sh
 [ -f "$CL/.memory-hooks/activity.json" ] || echo '{"edits":0,"commits":0,"files_changed":[],"last_commit":"","last_nudge":0,"cycles":0}' > "$CL/.memory-hooks/activity.json"
 
 # 5) merge hooks into settings.json (preserve existing), using Node (always present with Claude Code)

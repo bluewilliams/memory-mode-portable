@@ -210,6 +210,21 @@ Just start working. Memory is always on. Every project auto-initializes on first
 
 Claude writes a breadcrumb at the end of each response. If it's missing at the start of the next response, compaction occurred and Claude recovers automatically: reads the global index, hot cache, preferences, and resumes seamlessly.
 
+## What's New in v2.2
+
+- **Time awareness.** Every prompt carries the local time, part of the day and work day (`<memory-clock>`). A session that resumes the next morning starts a new dated session note instead of appending to yesterday's; work before 04:00 stays with the previous evening. Late in the evening, Claude keeps answers tight and offers to park long work.
+- **Continuous learning.** The prompt hook spots preferences, corrections, personal context and named colleagues (`<memory-learn>`), and Claude files them silently: user preferences, People notes, standing rules, runbooks.
+- **Standing rules per project** (`.claude-state/{project}/rules.md`): constraints the user sets once survive compaction and new sessions.
+- **Waiting On** in the hot cache: who owes what, surfaced at session start when it is more than 3 days old.
+- **Runbooks** (`Runbooks/`): exact, repeatable procedures (start the stack, refresh a token, run a demo), written the second time a procedure is worked out.
+- **A small Tier 0 index with a timeline.** `tools/memory-index-split.sh` moves Recent rows older than 14 days into monthly files (`.claude-state/index/timeline/YYYY-MM.md`) and long topic rows into `index/topic-detail.md`, verbatim, with a backup and a loss check.
+- **Status lifecycle.** `hooks/memory-status.sh` lists stale `active`, dormant `living` and old `stub` notes; the prompt hook runs it weekly, and the dashboard has a "Needs a Status Decision" section.
+- **Concurrent sessions.** Activity is counted per session, so a fork or a second terminal never resets another session's nudges.
+- **Cross-project topic hubs** for subjects that span several project keys.
+- **Tests:** `tests/hooks-test.sh` runs every hook in a throwaway HOME and vault (29 checks).
+
+Upgrading from v2.1 needs no `settings.json` change on macOS and Linux: rerun `./install.sh` (or copy `hooks/*.sh` to `~/.claude/hooks/`, `tools/*.sh` to `~/.claude/tools/`, and `MEMORY.md` to `~/.claude/`). Then run `~/.claude/tools/memory-index-split.sh --dry-run` to preview the index split.
+
 ## Auto-Save Hooks
 
 The biggest risk with memory mode is "memory drift" - getting deep into work and forgetting to update memory files. Auto-save hooks solve this by tracking your activity and nudging Claude at the right moments.
@@ -219,13 +234,15 @@ The biggest risk with memory mode is "memory drift" - getting deep into work and
 | Hook | Event | What it does |
 |------|-------|-------------|
 | `memory-tracker.sh` | PostToolUse | Silently counts edits and commits to a state file |
-| `memory-nudge.sh` | UserPromptSubmit | Checks activity, injects checkpoint nudge if needed |
+| `memory-nudge.sh` | UserPromptSubmit | Injects the local clock and learning cues, checks activity, injects a checkpoint nudge if needed, runs the weekly status scan |
 | `memory-precompact.sh` | PreCompact | Critical reminder to save before context is lost |
+| `memory-status.sh` | (called weekly by the nudge, or by hand) | Lists notes whose status no longer tells the truth |
 
 ### When Nudges Fire
 
 - **After any git commit** - Claude is told to update task and progress files
-- **After 10+ file edits** - Claude is reminded to checkpoint current state
+- **Every 3 prompts with edits, or 15 minutes** - Claude is reminded to checkpoint current state
+- **5 prompts of pure conversation** - Claude self-assesses for decisions, findings, preferences and new people
 - **Before context compaction** - Critical priority: save everything NOW
 - **Rate-limited** to once per 5 minutes to avoid being annoying
 

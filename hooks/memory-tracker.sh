@@ -12,7 +12,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/memory-common.sh" 2>/dev/null || true
 
 STATE_DIR=$(get_state_dir 2>/dev/null) || STATE_DIR="$HOME/.claude/.memory-hooks"
-STATE_FILE="$STATE_DIR/activity.json"
 INIT_JSON='{"edits":0,"commits":0,"files_changed":[],"last_commit":"","last_nudge":0,"cycles":0}'
 
 mkdir -p "$STATE_DIR" 2>/dev/null || true
@@ -26,6 +25,10 @@ if [ -z "$INPUT" ] || ! echo "$INPUT" | jq empty 2>/dev/null; then
 fi
 
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null) || true
+
+# v2.2: each session counts its own activity, so concurrent sessions do not reset each other's nudges.
+SESSION_ID=$(session_id_from_json "$INPUT" 2>/dev/null) || SESSION_ID=""
+STATE_FILE=$(activity_file_for "$STATE_DIR" "$SESSION_ID" 2>/dev/null) || STATE_FILE="$STATE_DIR/activity.json"
 
 # Initialize state file if missing or corrupted
 if [ ! -f "$STATE_FILE" ] || ! jq empty "$STATE_FILE" 2>/dev/null; then

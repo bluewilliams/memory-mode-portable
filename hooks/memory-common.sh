@@ -81,3 +81,74 @@ get_state_dir() {
         echo "$HOME/.claude/.memory-hooks"
     fi
 }
+
+# ---------------------------------------------------------------------------
+# v2.2: per-session state, the local clock, and the work day
+# ---------------------------------------------------------------------------
+
+INIT_ACTIVITY_JSON='{"edits":0,"commits":0,"files_changed":[],"last_commit":"","last_nudge":0,"cycles":0}'
+
+# The session id from a hook's stdin JSON (empty when absent). Claude Code sends session_id to every hook.
+session_id_from_json() {
+    local input="$1" sid
+    sid=$(printf '%s' "$input" | jq -r '.session_id // empty' 2>/dev/null) || true
+    # Keep it filename-safe: letters, digits, dash and underscore only.
+    printf '%s' "$sid" | tr -cd 'A-Za-z0-9_-' | cut -c1-80
+}
+
+# The activity file for a session. Concurrent sessions each count their own edits and commits;
+# without a session id (older Claude Code, manual runs) every caller shares activity.json as before.
+activity_file_for() {
+    local state_dir="$1" sid="$2"
+    if [ -n "$sid" ]; then
+        mkdir -p "$state_dir/sessions" 2>/dev/null || true
+        echo "$state_dir/sessions/activity-$sid.json"
+    else
+        echo "$state_dir/activity.json"
+    fi
+}
+
+# Work-day boundary hour. Work before this hour belongs to the previous day, so a session that runs
+# past midnight keeps writing to the same dated session note.
+WORKDAY_BOUNDARY_HOUR=4
+
+# The work day (YYYY-MM-DD) for an epoch. Uses local time.
+workday_for_epoch() {
+    local epoch="$1" shifted
+    shifted=$((epoch - WORKDAY_BOUNDARY_HOUR * 3600))
+    if date -r "$shifted" +%Y-%m-%d >/dev/null 2>&1; then
+        date -r "$shifted" +%Y-%m-%d
+    else
+        date -d "@$shifted" +%Y-%m-%d
+    fi
+}
+
+# Format an epoch with a date(1) format string, on BSD (macOS) and GNU (Linux, Git Bash) date.
+format_epoch() {
+    local epoch="$1" fmt="$2"
+    if date -r "$epoch" "+$fmt" >/dev/null 2>&1; then
+        date -r "$epoch" "+$fmt"
+    else
+        date -d "@$epoch" "+$fmt"
+    fi
+}
+
+# The part of the day for a local hour (0-23).
+daypart_for_hour() {
+    local h=$((10#$1))
+    if [ "$h" -lt "$WORKDAY_BOUNDARY_HOUR" ]; then echo "late night"
+    elif [ "$h" -lt 12 ]; then echo "morning"
+    elif [ "$h" -lt 17 ]; then echo "afternoon"
+    elif [ "$h" -lt 21 ]; then echo "evening"
+    else echo "late evening"
+    fi
+}
+
+# A short human gap: "45m", "3h 10m", "2d 4h".
+human_gap() {
+    local s="$1"
+    if [ "$s" -lt 3600 ]; then echo "$((s / 60))m"
+    elif [ "$s" -lt 86400 ]; then echo "$((s / 3600))h $(((s % 3600) / 60))m"
+    else echo "$((s / 86400))d $(((s % 86400) / 3600))h"
+    fi
+}

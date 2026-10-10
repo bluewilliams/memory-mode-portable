@@ -421,10 +421,16 @@ cp "$SCRIPT_DIR/hooks/memory-common.sh" "$HOOKS_DIR/memory-common.sh"
 cp "$SCRIPT_DIR/hooks/memory-tracker.sh" "$HOOKS_DIR/memory-tracker.sh"
 cp "$SCRIPT_DIR/hooks/memory-nudge.sh" "$HOOKS_DIR/memory-nudge.sh"
 cp "$SCRIPT_DIR/hooks/memory-precompact.sh" "$HOOKS_DIR/memory-precompact.sh"
+cp "$SCRIPT_DIR/hooks/memory-status.sh" "$HOOKS_DIR/memory-status.sh"
 chmod +x "$HOOKS_DIR"/*.sh
 
+# v2.2 maintenance tools (run by hand or at the weekly pass; no hook registration needed)
+mkdir -p "$CLAUDE_DIR/tools"
+cp "$SCRIPT_DIR/tools/memory-index-split.sh" "$CLAUDE_DIR/tools/memory-index-split.sh"
+chmod +x "$CLAUDE_DIR/tools/"*.sh
+
 # Initialize state file
-echo '{"edits":0,"commits":0,"files_changed":[],"last_commit":"","last_nudge":0}' > "$STATE_DIR/activity.json"
+[ -f "$STATE_DIR/activity.json" ] || echo '{"edits":0,"commits":0,"files_changed":[],"last_commit":"","last_nudge":0,"cycles":0}' > "$STATE_DIR/activity.json"
 
 SETTINGS_FILE="$CLAUDE_DIR/settings.json"
 if [ ! -f "$SETTINGS_FILE" ]; then
