@@ -210,6 +210,20 @@ Just start working. Memory is always on. Every project auto-initializes on first
 
 Claude writes a breadcrumb at the end of each response. If it's missing at the start of the next response, compaction occurred and Claude recovers automatically: reads the global index, hot cache, preferences, and resumes seamlessly.
 
+## What's New in v2.3
+
+v2.3 is about using memory, not only storing it.
+
+- **Associative recall.** Name a person, project or ticket in a prompt, and the prompt hook adds what Claude already knows about it (`<memory-recall>`): role and summary, the project's focus, the last session on the ticket. The first prompt of a session also gets the notes most related to its topic. Each note is surfaced once per session. One-word names match only when capitalized, so "the commit hash" does not recall a colleague named Hash.
+- **A recall tool.** `tools/memory-recall.sh query <terms>` ranks every note by title and summary, plus every line of the user's profile, moments and observations. It is the first step of any deep search, and it rebuilds its index in the background when notes change.
+- **Recall Points.** MEMORY.md lists fixed moments to recall without being asked: a named person, before proposing a design (lessons and decisions), before working out a procedure (runbooks), before writing in the user's voice, and before ever saying "I don't have notes on X".
+- **Broader capture.** An interest test ("would a good colleague remember this a month later?"), a dated `moments.md` log, a **Current Chapter** section at the top of `profile.md`, a **Learned** section in session notes, and observations stored with evidence and confidence instead of waiting for confirmation.
+- **One home per fact.** Each fact about the user lives in one file, and a changed fact replaces the old line, so copies cannot drift apart.
+- **A daily doctor.** On the first prompt of each work day, `tools/memory-doctor.sh --fix` runs in the background: it rebuilds the recall index, splits an oversized global index, and reports duplicate People notes, broken links, notes without summaries, breadcrumb gaps, big caches, legacy state folders and em dashes. Claude works through the report at a natural pause, in a background subagent when it can.
+- **Tests:** 48 checks in `tests/hooks-test.sh`.
+
+Upgrading from v2.2: copy `hooks/*.sh` to `~/.claude/hooks/`, `tools/*.sh` to `~/.claude/tools/`, and `MEMORY.md` and `USER.md` to `~/.claude/`, or rerun `./install.sh`. No `settings.json` change is needed. Run `~/.claude/tools/memory-recall.sh build` once to build the first index.
+
 ## What's New in v2.2
 
 - **Time awareness.** Every prompt carries the local time, part of the day and work day (`<memory-clock>`). A session that resumes the next morning starts a new dated session note instead of appending to yesterday's; work before 04:00 stays with the previous evening. Late in the evening, Claude keeps answers tight and offers to park long work.
@@ -424,6 +438,12 @@ See [OBSIDIAN-DESIGN.md](OBSIDIAN-DESIGN.md) for the full architectural design i
 | Hooks not firing | Run `./hooks/install-hooks.sh` and check `~/.claude/settings.json` has hooks config |
 
 ## Version History
+
+### v2.3.0 - Recall and Daily Maintenance
+
+- Associative recall hook (`<memory-recall>`) and `tools/memory-recall.sh` (ranked query over notes and user memory)
+- Recall Points in MEMORY.md; one home per fact; interest test; `moments.md`; Current Chapter; session note Learned section
+- Daily doctor (`tools/memory-doctor.sh`): safe fixes in the background, a report for the rest
 
 ### v2.1.0 - Breadcrumb System
 

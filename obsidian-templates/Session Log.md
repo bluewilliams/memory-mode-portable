@@ -64,6 +64,9 @@ helps future sessions avoid repeating dead ends.
 
 ## Notes
 
+## Learned
+One line per thing learned today about the user, a colleague, the org or the domain, and where it was stored.
+
 ## Key Context for Recovery
 If reading this after compaction: summarize the essential state here.
 

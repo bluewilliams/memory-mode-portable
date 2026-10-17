@@ -52,6 +52,8 @@ CONTEXT IS ABOUT TO BE LOST. This is your last chance to save state. Complete AL
 
 5. SAVE UNSAVED DECISIONS: Any decisions made but not yet written to Decisions/
 
+6. SAVE WHAT YOU LEARNED: anything new about the user (profile.md, Current Chapter, moments.md, observations.md) or a colleague (People/{name}.md), replacing old values. Add the session note "Learned" lines.
+
 Unsaved work: $EDITS edits across $FILES_COUNT files, $COMMITS commits since last save.
 Vault root: $CLAUDE_ROOT
 </memory-checkpoint>

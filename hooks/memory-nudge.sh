@@ -12,7 +12,7 @@
 #      (catches long discussions that produced no file edits but may contain
 #      decisions, findings, or new people worth capturing)
 #
-# NOTE: Do NOT use `set -e` — jq failures must not kill the script.
+# NOTE: Do NOT use `set -e`: jq failures must not kill the script.
 
 # Source common utilities for backend-aware path resolution
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -49,6 +49,7 @@ emit_clock() {
     elif [ -n "$last_workday" ] && [ "$last_workday" != "$workday" ]; then reason="new-workday"
     elif [ "$gap" -ge 7200 ]; then reason="long-gap"
     fi
+    CLOCK_REASON="$reason"
     jq -n --argjson t "$NOW" --arg w "$workday" '{last_prompt: $t, workday: $w}' > "$clock_file.tmp" 2>/dev/null && mv "$clock_file.tmp" "$clock_file"
 
     if [ -z "$reason" ]; then
@@ -94,6 +95,65 @@ emit_status_hygiene() {
     printf '<memory-maintenance reason="weekly-status-hygiene">%s\nAt a natural pause, offer the user a short status pass: for each note, confirm it is still open (touch updated:), or set completed / decided / superseded. Full list: ~/.claude/hooks/memory-status.sh</memory-maintenance>\n' "$report"
 }
 
+# --- v2.3 tools: recall and the daily doctor live in ~/.claude/tools (or ../tools in the repo). ---
+TOOLS_DIR="$HOME/.claude/tools"
+[ -x "$TOOLS_DIR/memory-recall.sh" ] || TOOLS_DIR="$SCRIPT_DIR/../tools"
+
+# Run a command detached, so a slow rebuild never delays the prompt. One run at a time per lock name.
+run_detached() {
+    local lock="$STATE_DIR/index/.lock-$1"; shift
+    mkdir -p "$STATE_DIR/index" 2>/dev/null || return 0
+    # A lock older than 10 minutes belongs to a run that died.
+    [ -d "$lock" ] && [ -n "$(find "$lock" -maxdepth 0 -mmin +10 2>/dev/null)" ] && rmdir "$lock" 2>/dev/null
+    mkdir "$lock" 2>/dev/null || return 0
+    nohup bash -c '"$@"; rmdir "$0"' "$lock" "$@" >/dev/null 2>&1 &
+}
+
+# --- v2.3 associative recall: name a person, project or ticket, and what you know about it comes back. ---
+emit_recall() {
+    [ -n "$PROMPT_TEXT" ] && [ -x "$TOOLS_DIR/memory-recall.sh" ] || return 0
+    "$TOOLS_DIR/memory-recall.sh" stale 2>/dev/null && run_detached recall "$TOOLS_DIR/memory-recall.sh" build
+    local seen="$STATE_DIR/sessions/recall-${SESSION_ID:-shared}.txt" hits lines
+    mkdir -p "$STATE_DIR/sessions" 2>/dev/null
+    touch "$seen" 2>/dev/null || return 0
+    hits=$(printf '%s' "$PROMPT_TEXT" | "$TOOLS_DIR/memory-recall.sh" prompt 2>/dev/null |
+        awk -F'\t' -v seen="$seen" 'BEGIN { while ((getline l < seen) > 0) s[l] = 1 } !($3 in s) && !($3 in out) { out[$3] = 1; print }' | head -5)
+    # The first prompt of a session (or after a long gap) also gets the notes most related to its topic.
+    if [ "$CLOCK_REASON" = "session-start" ] || [ "$CLOCK_REASON" = "long-gap" ] || [ "$CLOCK_REASON" = "new-workday" ]; then
+        local words related
+        words=$(printf '%s' "$PROMPT_TEXT" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' ' ' | tr ' ' '\n' |
+            grep -Ev '^(.{0,3}|about|after|again|also|because|before|being|could|does|doing|from|have|into|just|like|make|more|need|please|really|should|some|that|their|them|then|there|these|they|thing|things|this|want|what|when|where|which|while|will|with|would|your|yours)$' | awk '!s[$0]++' | head -8 | tr '\n' ' ')
+        if [ -n "$words" ]; then
+            related=$("$TOOLS_DIR/memory-recall.sh" query -t -n 12 $words 2>/dev/null | HITS="$hits" awk -F'\t' -v seen="$seen" '
+                BEGIN { while ((getline l < seen) > 0) s[l] = 1; n = split(ENVIRON["HITS"], h, "\n"); for (i = 1; i <= n; i++) { split(h[i], f, "\t"); s[f[3]] = 1 } }
+                $1 >= 2 && $3 !~ /^~\// && !($3 in s) { printf "related\t%s\t%s\t%s\n", $4, $3, $5; if (++c == 4) exit }')
+            [ -n "$related" ] && hits="$hits${hits:+
+}$related"
+        fi
+    fi
+    [ -n "$hits" ] || return 0
+    printf '%s\n' "$hits" | cut -f3 >> "$seen"
+    lines=$(printf '%s\n' "$hits" | awk -F'\t' '{ s = $4; if (length(s) > 220) s = substr(s, 1, 217) "..."; printf "- %s (%s): %s -> %s\n", $1, $2, s, $3 }')
+    printf '<memory-recall>You already know these from earlier work. Use them as your own recollection, and open the note when the detail matters:\n%s\n</memory-recall>\n' "$lines"
+}
+
+# --- v2.3 daily maintenance: once per work day, the doctor runs in the background and reports next prompt. ---
+emit_daily_maintenance() {
+    [ "$(get_backend 2>/dev/null)" = "obsidian" ] && [ -x "$TOOLS_DIR/memory-doctor.sh" ] || return 0
+    local stamp="$STATE_DIR/last-daily-maintenance" report="$STATE_DIR/index/doctor-brief.txt" today
+    today=$(workday_for_epoch "$NOW" 2>/dev/null) || return 0
+    if [ "$(cat "$stamp" 2>/dev/null)" != "$today" ]; then
+        echo "$today" > "$stamp" 2>/dev/null || return 0
+        rm -f "$report" 2>/dev/null
+        run_detached doctor bash -c '"$1" --fix --brief > "$2.tmp" && mv "$2.tmp" "$2"' _ "$TOOLS_DIR/memory-doctor.sh" "$report"
+        return 0
+    fi
+    [ -s "$report" ] || return 0
+    if grep -q 'no problems found' "$report"; then rm -f "$report"; return 0; fi
+    printf '<memory-maintenance reason="daily-doctor">%s\nAt a natural pause (or now, if the user is idle or the task is small), do the daily memory pass in Vault Maintenance > Daily: delegate it to a background subagent when one is available, so the user is not kept waiting. Full report: ~/.claude/tools/memory-doctor.sh</memory-maintenance>\n' "$(cat "$report")"
+    mv "$report" "$report.done" 2>/dev/null
+}
+
 # Per-session files from sessions that ended more than 7 days ago are removed now and then.
 if [ $((NOW % 20)) -eq 0 ] && [ -d "$STATE_DIR/sessions" ]; then
     find "$STATE_DIR/sessions" -type f -name '*.json' -mtime +7 -delete 2>/dev/null || true
@@ -101,6 +161,8 @@ fi
 
 emit_clock 2>/dev/null || true
 emit_learn 2>/dev/null || true
+emit_recall 2>/dev/null || true
+emit_daily_maintenance 2>/dev/null || true
 emit_status_hygiene 2>/dev/null || true
 
 # Tunable thresholds
@@ -154,7 +216,7 @@ elif [ "$ELAPSED" -ge "$MIN_NUDGE_GAP_SEC" ] && [ "$ACTIVITY" -gt 0 ]; then
         REASON="cycle-checkpoint"
         FILES_COUNT=$(jq -r '.files_changed | length' "$STATE_FILE" 2>/dev/null) || FILES_COUNT=0
         if [ "$BACKEND" = "obsidian" ]; then
-            NUDGE="<memory-checkpoint reason=\"cycle-checkpoint\" backend=\"obsidian\">$NEW_CYCLES conversation cycles with $EDITS edit(s) across $FILES_COUNT file(s) since your last memory save. If anything worth capturing happened - decisions, analysis findings, progress, new context - update the active session note in Sessions/ and the hot cache in .claude-state/{project}/recent.md. If nothing is worth saving, acknowledge silently and continue.</memory-checkpoint>"
+            NUDGE="<memory-checkpoint reason=\"cycle-checkpoint\" backend=\"obsidian\">$NEW_CYCLES conversation cycles with $EDITS edit(s) across $FILES_COUNT file(s) since your last memory save. If anything worth capturing happened - decisions, analysis findings, progress, new context, or something you learned about the user or a colleague - update the active session note in Sessions/ and the hot cache in .claude-state/{project}/recent.md (and profile.md, moments.md or People/ for what you learned). If nothing is worth saving, acknowledge silently and continue.</memory-checkpoint>"
         else
             NUDGE="<memory-checkpoint reason=\"cycle-checkpoint\">$NEW_CYCLES conversation cycles with $EDITS edit(s) across $FILES_COUNT file(s) since your last memory save. If anything worth capturing happened, update context/current-task.md.</memory-checkpoint>"
         fi
@@ -173,7 +235,7 @@ elif [ "$ELAPSED" -ge "$MIN_NUDGE_GAP_SEC" ] && [ "$ACTIVITY" -gt 0 ]; then
 elif [ "$ELAPSED" -ge "$MIN_NUDGE_GAP_SEC" ] && [ "$ACTIVITY" -eq 0 ] && [ "$NEW_CYCLES" -ge "$PURE_CYCLES_THRESHOLD" ]; then
     REASON="pure-conversation"
     if [ "$BACKEND" = "obsidian" ]; then
-        NUDGE="<memory-checkpoint reason=\"pure-conversation\" backend=\"obsidian\">$NEW_CYCLES conversation cycles with no file activity. Self-assess: did any decisions, analysis findings, context shifts, or preferences emerge in this discussion? If yes, update the active session note in Sessions/ and the hot cache in .claude-state/{project}/recent.md. Also scan for new people mentioned - if anyone lacks a note in People/, use AskUserQuestion to learn about them. If nothing is worth saving, acknowledge silently and continue.</memory-checkpoint>"
+        NUDGE="<memory-checkpoint reason=\"pure-conversation\" backend=\"obsidian\">$NEW_CYCLES conversation cycles with no file activity. Self-assess: did any decisions, analysis findings, context shifts, preferences, or interesting moments (a story, an opinion, news from the user's life or the org) emerge in this discussion? Capture moments in ~/.claude/user/moments.md and changes in profile.md Current Chapter. If yes, update the active session note in Sessions/ and the hot cache in .claude-state/{project}/recent.md. Also scan for new people mentioned - if anyone lacks a note in People/, use AskUserQuestion to learn about them. If nothing is worth saving, acknowledge silently and continue.</memory-checkpoint>"
     else
         NUDGE="<memory-checkpoint reason=\"pure-conversation\">$NEW_CYCLES conversation cycles with no file activity. If decisions or findings emerged, update context/current-task.md.</memory-checkpoint>"
     fi

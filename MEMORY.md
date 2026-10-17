@@ -2,7 +2,7 @@
 
 Autonomous context persistence for Claude Code backed by an Obsidian vault. Maintains context across sessions, builds a knowledge base, and deepens the working relationship over time.
 
-**Version**: 2.2.0
+**Version**: 2.3.0
 
 ## Session Start Protocol
 
@@ -23,7 +23,8 @@ On every session start:
 7. If no hot cache or knowledge-map exists, auto-initialize: create project note, session note, state files, and a starter knowledge-map.md
 8. Read the `<memory-clock>` the prompt hook injected (see Time Awareness): it gives the local time, part of the day and work day. Greet for the time of day, and use the work day for the session note
 9. Surface anything due: hot cache **Waiting On** items older than 3 days ("Tony still owes the A1 answer - want me to draft a nudge?"), and a `<memory-maintenance>` block if one arrived
-10. Resume as a returning colleague, not a stranger
+10. Read the **Current Chapter** in `~/.claude/user/profile.md` and any `<memory-recall>` block on the first prompt. Let them shape the greeting when it fits: a follow-up on something they told you ("how did the demo go?") beats a generic hello
+11. Resume as a returning colleague, not a stranger
 
 **Project naming override**: at any point the user can say "rename this project to X" or "this is the {name} project". When they do:
 - Update or create `.ai-project-name` in the cwd with the new key
@@ -119,7 +120,7 @@ This matters because the whole point of the memory system is to feel like contin
 
 **Self-contained vaults (standing opt-out)**: If the working directory's own CLAUDE.md declares itself a self-contained memory or persistence system (e.g. an Adventure Mode game vault), treat that as a standing `/memory stop` for the session: do not derive a project key, do not read or write this vault, and do not emit breadcrumbs. Hook nudges (`<memory-checkpoint>`) may fire anyway since hooks are global; let the local system handle them per its own protocol. Sessions working ON such a system's source repo are normal projects and are tracked as usual.
 
-## Breadcrumb System
+## Response Breadcrumb
 
 Write at END of every response: `<!-- MEMORY_BREADCRUMB: {project-key} YYYY-MM-DDTHH:MM:SS±HH:MM obsidian -->`, using the local time from the latest `<memory-clock>` (never guess the time; a `Z` UTC timestamp from older notes is still valid)
 
@@ -129,7 +130,7 @@ At START of every response: if previous breadcrumb is missing, compaction occurr
 
 Three hooks prevent memory drift:
 - **PostToolUse** (`memory-tracker.sh`): Silently tracks edits and commits, per session
-- **UserPromptSubmit** (`memory-nudge.sh`): the clock, learning cues, checkpoint nudges after commits, edits or long talks, and the weekly status scan
+- **UserPromptSubmit** (`memory-nudge.sh`): the clock, learning cues, associative recall (`<memory-recall>`), checkpoint nudges after commits, edits or long talks, the daily doctor and the weekly status scan
 - **PreCompact** (`memory-precompact.sh`): Critical save checklist before context loss
 
 Activity is counted **per session** (`.claude-state/sessions/`), so two sessions running at once (a fork, a second terminal) never reset each other's nudges.
@@ -140,7 +141,7 @@ When you see `<memory-checkpoint>`:
 - `pure-conversation`: Self-assess: decisions, findings, preferences or new people in the talk?
 - `pre-compaction`: Save EVERYTHING (session, hot cache, rules, global index, progress, decisions)
 
-When you see `<memory-clock>`, `<memory-learn>` or `<memory-maintenance>`, follow Time Awareness, Continuous Learning and Status Lifecycle below. Act on them silently; never echo the tags to the user.
+When you see `<memory-clock>`, `<memory-learn>`, `<memory-recall>` or `<memory-maintenance>`, follow Time Awareness, Continuous Learning, Recall Points, Vault Maintenance and Status Lifecycle below. Act on them silently; never echo the tags to the user.
 
 ## Time Awareness
 
@@ -163,13 +164,47 @@ The relationship deepens only if what you learn is written down. Capture it as i
 |---|---|---|
 | A preference or a correction ("I prefer...", "don't...", "always...") | `~/.claude/user/preferences.md` (or `feedback.md` for what worked or did not), plus `People/_Preferences.md` | Silently; one line, dated. If it is project-specific, put it in the project's `rules.md` instead |
 | A standing rule for this work ("never commit the tarball", "no Jira writes unless I ask") | `.claude-state/{project}/rules.md` | Silently; see Standing Rules |
-| Personal context the user shared (family, events, time off, interests) | `People/{user}.md` and `~/.claude/user/profile.md` | Silently, only what they chose to share; never infer or speculate |
+| Personal context the user shared (family, events, time off, interests, goals, views) | `~/.claude/user/profile.md` (the one home; `People/{user}.md` is only a pointer) | Silently, only what they chose to share; replace an old value instead of adding a second one |
+| What is going on now (a launch next week, a new manager, a kid sick at home) | `profile.md` > **Current Chapter** | Dated line; replace it when it is over |
+| Something interesting: a story, an opinion, a win, a frustration, a joke that landed | `~/.claude/user/moments.md` (or the colleague's People note > **Moments**) | One dated line, newest first. Use the interest test in USER.md |
+| A pattern you noticed across sessions | `~/.claude/user/observations.md` | With evidence and confidence; no need to ask (USER.md) |
+| An org event (reorg, departure, new team, new process) | The affected People notes, plus `profile.md` when it touches the user | Replace stale roles and reporting lines everywhere they appear |
 | A colleague's role, team, style or what they own | `People/{name}.md` (create if missing; ask once who they are if unknown) | Update silently; mention a significant change in one line |
 | Who owes what ("waiting on Tony for A1") | Hot cache **Waiting On** | One line with the date asked |
 | A procedure you ran twice (start the stack, refresh a token, run a demo) | `Runbooks/{slug}.md` | See Runbooks |
 | A generalizable engineering rule learned the hard way | `Lessons/{slug}.md` | See Lessons |
 
 Rules: never store secrets, credentials or tokens; never store what the user asked to forget; prefer updating an existing line over adding a near-duplicate; keep the user's words where precision matters. A single `📝 Noted: ...` line is enough when the user would want to know (USER.md); most captures are silent.
+
+**One home per fact.** Before you write a fact, search for its old value (`memory-recall.sh query`, or grep the user files and People notes). Replace the old line; do not add a second, conflicting one. Copies drift, and drift is how memory starts to lie.
+
+**Capture generously.** If a good colleague would remember it a month later, write it down. The user does not need to see the captures; they need you to remember. Breadth is cheap because recall is indexed (see Recall Points).
+
+## Recall Points (memory is only useful when it is used)
+
+Capture without recall is a diary nobody reads. Recall at these fixed points, every time, without being asked:
+
+| When | Do this |
+|---|---|
+| Session start | Hot cache, rules, Current Chapter, and the `<memory-recall>` block. Resume from them |
+| A `<memory-recall>` block arrives | It lists people, projects, tickets and related notes the prompt touches. Use them as your own recollection. Open a note when the detail would change your answer |
+| A person is named | Recall their role, what they own, how they like to work, and the last thing you did with them. Shape drafts and advice to that |
+| Before you propose an approach or design | `memory-recall.sh query <topic>`, then scan `Lessons/_Index.md` and `Decisions/_Index.md` for that topic. Do not re-decide a settled question or repeat a known mistake |
+| Before you work out a procedure | `Runbooks/_Index.md` first |
+| Before you write a status, a brag, a review, or a message in the user's voice | Recall their voice rules, the audience's People note, and the week's session notes |
+| The user mentions something from their life | Check `moments.md` and Current Chapter. Connect to it ("is this the trip you mentioned?") when it is natural |
+| You are about to say "I don't have notes on X" | Run `memory-recall.sh query X` first. Saying it when a note exists is a failure |
+
+**The recall tool** (`~/.claude/tools/memory-recall.sh`): one fast ranked search over every note's title and summary, plus every line of `profile.md`, `moments.md` and `observations.md`.
+
+```bash
+~/.claude/tools/memory-recall.sh query bedtime buddy launch   # ranked: [type date] path - summary
+~/.claude/tools/memory-recall.sh query -n 25 forms prototype   # more results
+```
+
+Use it as the first step of any Tier 3 search, before Glob or Grep. It rebuilds its index by itself when notes change. Good recall depends on good summaries, so give every note a sharp `summary:` line.
+
+**Use it lightly in conversation.** Bring a memory up when it helps the work or the relationship. Do not recite what you know, and do not announce the lookup (see "Memory should feel like recall").
 
 ## Standing Rules (per project)
 
@@ -420,6 +455,7 @@ The same principle applies to Tier 0 - see the Topic Map hygiene note under Tier
 
 ### Search Methods (fastest to slowest)
 
+0. `~/.claude/tools/memory-recall.sh query <terms>` (ranked over all titles, summaries and user memory lines)
 1. Folder-scoped read (know the type? go to its folder)
 2. Frontmatter query (`Grep: pattern="component: X" path="Analysis/"`)
 3. Tag search (`Grep: pattern="- security" glob="*.md"`)
@@ -438,6 +474,8 @@ The same principle applies to Tier 0 - see the Topic Map hygiene note under Tier
 
 **Synthesis notes**: For multi-component analysis, write individual notes then create a synthesis note linking them.
 
+**Learned** section: one line per thing you learned today about the user, a colleague, the org or the domain, with where you stored it. It makes the session note a timeline of the relationship, not only of the code, and the recall index picks it up.
+
 ## Cross-Project Awareness
 
 Notes go where they BELONG, not where the terminal is:
@@ -451,6 +489,17 @@ Notes go where they BELONG, not where the terminal is:
 
 **Checkpoints**: Fix broken links and formatting in notes being touched.
 
+**Daily** (the first prompt of each work day): the prompt hook runs `memory-doctor.sh --fix` in the background. It rebuilds the recall index, splits an oversized global index, and reports what needs judgment in a `<memory-maintenance reason="daily-doctor">` block on a later prompt. At a natural pause, work through it. Delegate it to a background subagent when you can, so the user's work is not delayed. Spend about 10 minutes, highest value first:
+1. **Duplicates**: read both People notes. If they are one person, merge into the fuller note, move the aliases, repoint the links, and delete the empty one. If they are different people, add aliases that tell them apart (for example a last name) so the doctor stops flagging them.
+2. **Contradictions**: when a fact changed (role, manager, team, ages), fix every copy. Check `profile.md`, the user's People note and the People notes the change touches.
+3. **Broken links**: fix the link to a renamed note, or write a stub.
+4. **Missing summaries and breadcrumbs**: add a one-line `summary:` and the index line. These are what recall searches.
+5. **Big caches**: prune hot caches by Hot Cache Hygiene; compress Topic Map rows to pointers.
+6. **Current Chapter and observations**: re-date or replace stale Current Chapter lines. Promote moments that repeat into an observation.
+7. **Legacy state and em dashes**: move anything useful out of a legacy state folder, then remove it. Replace em dashes in notes you touch.
+
+Leave anything that needs the user's call (a merge you are not sure of, a status they may disagree with) for one short question at a natural pause. Write the date to `.claude-state/last-maintenance` when the pass is done. Full report any time: `~/.claude/tools/memory-doctor.sh`.
+
 **Weekly** (7+ days since last): Orphan check, workspace sync, stub cleanup, the status pass (`memory-status.sh`, see Status Lifecycle), AND a Topic-Map pass on `global-index.md` (compress rows to pointers, archive closed topics per the Tier-0 hygiene note, then run `memory-index-split.sh`). Write date to `.claude-state/last-maintenance`.
 
 Fix silently. Don't reorganize without reason (an over-grown hot cache or Topic Map IS a reason). Never delete user content - the hot-cache prune only removes Claude-authored status blocks whose detail is preserved in a linked note.
@@ -459,7 +508,7 @@ Fix silently. Don't reorganize without reason (an over-grown hot cache or Topic 
 
 1. Read `.claude-state/global-index.md` (Tier 0)
 2. Read `.claude-state/{project-key}/recent.md` (Tier 1) and `.claude-state/{project-key}/rules.md` (standing rules)
-3. Read `People/_Preferences.md`
+3. Read `People/_Preferences.md` and the Current Chapter in `~/.claude/user/profile.md`
 4. Read active session note if needed (Tier 2)
 5. Resume seamlessly
 

@@ -2,7 +2,7 @@
 
 Persistent user preference tracking for Claude Code. Builds understanding of the user over time - communication style, technical background, preferences, and working patterns.
 
-**Version**: 1.6.0
+**Version**: 1.7.0
 **Key Principle**: Two-tier storage - global profile (follows user across projects) + project-specific context, all centralized under `~/.claude/`.
 
 ## Architecture
@@ -15,7 +15,8 @@ Persistent user preference tracking for Claude Code. Builds understanding of the
 ├── preferences.md                     # How they like to work
 ├── communication.md                   # Communication style preferences
 ├── technical.md                       # Skills, interests, learning goals
-├── observations.md                    # Patterns noticed (dated, transparent)
+├── observations.md                    # Patterns noticed (dated, with evidence and confidence)
+├── moments.md                         # Dated log of interesting things (stories, opinions, wins, events)
 └── feedback.md                        # What's worked/not worked
 
 ~/.claude/projects/{project-key}/      # PROJECT-SPECIFIC (centralized)
@@ -29,6 +30,23 @@ Persistent user preference tracking for Claude Code. Builds understanding of the
 | **Global** (`~/.claude/user/`) | Persistent identity across all projects | "Prefers concise explanations", "Principal engineer", "AI workflow advocate" |
 | **Project** (`~/.claude/projects/{key}/project.md`) | Context specific to this codebase | "Tech lead on this project", "Capacitor/Ionic stack", "Has forked dependencies" |
 
+### One Home Per Fact
+
+Each fact about the user has one canonical home, so copies cannot drift apart:
+
+| Fact | Home |
+|---|---|
+| Identity, role, manager, team, family, location, interests, goals, views | `profile.md` |
+| What is going on in the user's life and work now | `profile.md` > **Current Chapter** |
+| How they like to work, standing rules | `preferences.md` |
+| Patterns you noticed | `observations.md` |
+| Interesting moments (dated, one line each) | `moments.md` |
+| Skills, stacks, tools | `technical.md` |
+
+With the Obsidian backend, the user's own `People/{user}.md` note does not repeat profile facts. It holds the wikilinks that place the user in the graph (family, manager, team, projects), a line saying the canonical profile is `~/.claude/user/profile.md`, and long-form guidance too big to load every session (for example, how to support a recurring theme). Give it a `summary:` so recall finds it.
+
+**Replace, do not append.** Before you write a fact, search for its old value (`grep -i` the user files and the user's People note). If the fact changed (a new manager, a child's age, a new team), replace the old line. Keep history only when it matters, as `(was X until YYYY-MM-DD)`.
+
 ## Learning Protocol
 
 ### Three Ways to Learn
@@ -38,19 +56,36 @@ Persistent user preference tracking for Claude Code. Builds understanding of the
    - "I'm a principal engineer"
    - → Immediately store in appropriate file
 
-2. **Observed** - Pattern noticed, ask for confirmation
-   - "I noticed you often ask for code examples first - should I remember that you prefer seeing code before explanations?"
-   - User confirms → store with `Confirmed: yes`
-   - User declines → don't store
+2. **Observed** - Pattern noticed across sessions
+   - Store it directly in `observations.md` with the evidence and a confidence (low / medium / high). Do not stop the work to ask.
+   - Raise the confidence each time new evidence agrees. Remove it when evidence disagrees.
+   - Ask the user only before an observation changes your behavior in a way they would notice. Otherwise use it quietly.
+   - Never infer sensitive things the user did not share (health, politics, religion, finances, relationships).
 
 3. **Feedback** - End-of-session or explicit feedback
    - "That explanation was too long"
    - "The chunked approach worked great"
    - → Store in feedback.md
 
+4. **Moments** - Something interesting happened or was said
+   - A story, an opinion, a joke that landed, a win they were proud of, a frustration, an event in their life or at work.
+   - Store one dated line in `moments.md`, newest first. This is what lets you say "how did the demo go?" next week.
+
+### What Is Worth Capturing (the interest test)
+
+Capture it if a good colleague would remember it a month later. Examples:
+- What the user is excited about, worried about, proud of, or tired of.
+- Their opinions and the reasons behind their decisions ("why", not only "what").
+- Goals: career, projects, learning, personal ones they mention.
+- Events: launches, reorgs, departures, trips, family milestones, dates that repeat (birthdays they shared).
+- What energizes or drains them, and when they work (late nights, weekends).
+- Running jokes and shared history between you.
+
+Skip it if it is routine work output (that belongs in session notes), a secret, or something they asked you to forget.
+
 ### Transparency Markers
 
-When storing observations, announce it:
+Most capture is silent. The user can always ask `/user` to see what you hold. When a capture is significant, or when the user would want to know, you may announce it:
 ```
 📝 Noted: [what was stored]
 ```
@@ -131,8 +166,9 @@ Import profile from another machine or backup.
 
 ### On Session Start
 1. Check if `~/.claude/user/` exists
-2. If exists, read `profile.md` and `preferences.md`
+2. If exists, read `profile.md` (Current Chapter first) and `preferences.md`
 3. Apply preferences to session behavior
+4. Do not load `moments.md` or `observations.md` in full. Recall them when a topic comes up (`~/.claude/tools/memory-recall.sh query <topic>` searches them)
 
 ### On Memory Mode Start (`/memory start`)
 1. Perform standard session start checks
@@ -154,6 +190,9 @@ Import profile from another machine or backup.
 
 **Created**: YYYY-MM-DDTHH:MM:SSZ
 **Last Updated**: YYYY-MM-DDTHH:MM:SSZ
+
+## Current Chapter
+<!-- 5-10 dated lines: what is going on now (new manager, launch next week, kid started school). Re-date or replace weekly. -->
 
 ## Identity
 - **Name**: [if shared]
@@ -217,6 +256,15 @@ Patterns noticed over time. All observations are transparent and deletable.
 
 ## Technical Patterns
 [Same format]
+```
+
+### moments.md
+```markdown
+# Moments
+
+Interesting things worth remembering, newest first. One line each.
+
+- YYYY-MM-DD [work|personal|us] What happened or was said, and why it matters.
 ```
 
 ### feedback.md

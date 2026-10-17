@@ -10,7 +10,11 @@ export HOME="$TMP/home"
 mkdir -p "$HOME/.claude/hooks"
 cp "$REPO"/hooks/*.sh "$HOME/.claude/hooks/"
 chmod +x "$HOME/.claude/hooks/"*.sh
+mkdir -p "$HOME/.claude/tools" "$HOME/.claude/user"
+cp "$REPO"/tools/*.sh "$HOME/.claude/tools/"
+chmod +x "$HOME/.claude/tools/"*.sh
 H="$HOME/.claude/hooks"
+T="$HOME/.claude/tools"
 
 VAULT="$TMP/vault"
 ROOT="$VAULT/Claude"
@@ -102,13 +106,61 @@ check "a living note touched today is not flagged" $(echo "$OUT" | grep -q 'Fres
 check "a project with a session today is not flagged" $(echo "$OUT" | grep -q 'busy-project'; [ $? -ne 0 ]; echo $?)
 rm -f "$STATE/last-status-scan"
 OUT=$(prompt F "hi"); check "the weekly status nudge fires once" $(echo "$OUT" | grep -q 'memory-maintenance reason="weekly-status-hygiene"'; echo $?)
-OUT=$(prompt F "hi again"); check "the weekly status nudge does not repeat" $(echo "$OUT" | grep -q 'memory-maintenance'; [ $? -ne 0 ]; echo $?)
+OUT=$(prompt F "hi again"); check "the weekly status nudge does not repeat" $(echo "$OUT" | grep -q 'weekly-status-hygiene'; [ $? -ne 0 ]; echo $?)
 
 echo "precompact"
 tool G Edit '{"file_path":"/x/p.ts"}'
 OUT=$(jq -n '{session_id: "G"}' | "$H/memory-precompact.sh"); check "precompact prints the checklist" $(echo "$OUT" | grep -q 'pre-compaction'; echo $?)
 check "precompact counts the session's edit" $(echo "$OUT" | grep -q 'Unsaved work: 1 edits'; echo $?)
 check "precompact resets the session" $([ "$(jq -r .edits "$STATE/sessions/activity-G.json")" = "0" ]; echo $?)
+
+echo "recall"
+mkdir -p "$ROOT/People" "$ROOT/Lessons"
+printf -- '---\ntype: person\nrole: Product Manager\naliases:\n  - Tony\n---\n# Tony Anderson\n' > "$ROOT/People/Tony Anderson.md"
+printf -- '---\ntype: person\nsummary: "Engineer on the DeathStar Pod"\n---\n# Hash\n' > "$ROOT/People/Hash.md"
+printf -- '---\ntype: person\nrole: President\n---\n# Mitch\n' > "$ROOT/People/Mitch.md"
+printf -- '---\ntype: person\nrole: Head of Cloud\n---\n# Mitchell\n' > "$ROOT/People/Mitchell.md"
+printf -- '---\ntype: person\nrole: QA lead\n---\n# Pat Quinn\n' > "$ROOT/People/Pat Quinn.md"
+printf -- '---\ntype: project\nsummary: "Bedtime story app for kids"\n---\n# bedtime-buddy\n' > "$ROOT/Projects/bedtime-buddy.md"
+printf -- '---\ntype: session\ndate: 2026-04-10\ntickets: [KA-6175]\nsummary: "Stripe webhook hardening for the launch"\n---\n# Session\n' > "$ROOT/Sessions/2026-04-10 bedtime-buddy.md"
+printf -- '---\ntype: lesson\nsummary: "A pipe hides the exit code of the first command"\ntrigger: "When you check an exit status through a pipe"\n---\n# Pipe exit code\n' > "$ROOT/Lessons/pipe-exit-code.md"
+printf -- '- **Name**: Blue\n' > "$HOME/.claude/user/profile.md"
+printf '# Moments\n- 2026-10-16 Blue said the memory system is for Claude, to grow the relationship\n' > "$HOME/.claude/user/moments.md"
+"$T/memory-recall.sh" build
+check "the build writes the catalog and the entities" $([ -s "$STATE/index/catalog.tsv" ] && [ -s "$STATE/index/entities.tsv" ]; echo $?)
+OUT=$(echo "ask Tony Anderson about KA-6175 on bedtime buddy" | "$T/memory-recall.sh" prompt)
+check "a full name is recalled" $(echo "$OUT" | grep -q $'^tony anderson\tperson'; echo $?)
+check "a ticket recalls its latest session" $(echo "$OUT" | grep -q $'^ka-6175\tticket\tSessions/2026-04-10 bedtime-buddy.md'; echo $?)
+check "a project key matches with spaces for hyphens" $(echo "$OUT" | grep -q $'^bedtime buddy\tproject'; echo $?)
+OUT=$(echo "and ask Pat" | "$T/memory-recall.sh" prompt)
+check "a unique first name is recalled" $(echo "$OUT" | grep -q 'People/Pat Quinn.md'; echo $?)
+OUT=$(echo "print the commit hash" | "$T/memory-recall.sh" prompt)
+check "a lowercase common word is not a person" $(echo "$OUT" | grep -q 'Hash'; [ $? -ne 0 ]; echo $?)
+OUT=$(echo "pair with Hash today" | "$T/memory-recall.sh" prompt)
+check "a capitalized one-word name is a person" $(echo "$OUT" | grep -q 'People/Hash.md'; echo $?)
+OUT=$(echo "Blue will review it" | "$T/memory-recall.sh" prompt)
+check "the user is not recalled as a colleague" $([ -z "$OUT" ]; echo $?)
+OUT=$("$T/memory-recall.sh" query pipe exit)
+check "query finds a lesson by its summary" $(echo "$OUT" | grep -q 'Lessons/pipe-exit-code.md'; echo $?)
+OUT=$("$T/memory-recall.sh" query relationship)
+check "query finds a line in the user's moments" $(echo "$OUT" | grep -q 'moments.md'; echo $?)
+OUT=$(prompt R "ask Tony Anderson about it"); check "the hook recalls a named colleague" $(echo "$OUT" | grep -q '<memory-recall>'; echo $?)
+OUT=$(prompt R "Tony Anderson again"); check "the hook does not repeat a recall in one session" $(echo "$OUT" | grep -q 'memory-recall'; [ $? -ne 0 ]; echo $?)
+OUT=$(prompt S "lets continue the stripe webhook hardening"); check "the first prompt recalls related notes by topic" $(echo "$OUT" | grep -q 'related (session)'; echo $?)
+
+echo "doctor"
+OUT=$("$T/memory-doctor.sh")
+check "the doctor flags a name-prefix duplicate" $(echo "$OUT" | grep -q 'Mitch / Mitchell'; echo $?)
+echo '[[Claude/Analysis/Missing Note]]' >> "$ROOT/Analysis/Old Investigation.md"
+OUT=$("$T/memory-doctor.sh")
+check "the doctor flags a broken link" $(echo "$OUT" | grep -q 'Claude/Analysis/Missing Note'; echo $?)
+check "the doctor flags a note with no summary" $(echo "$OUT" | grep -q 'Projects/busy-project.md'; echo $?)
+rm -f "$STATE/last-daily-maintenance" "$STATE/index/doctor-brief.txt"
+prompt U "hello" > /dev/null
+check "the first prompt of a work day stamps the daily pass" $([ "$(cat "$STATE/last-daily-maintenance")" = "$(date -v-4H +%Y-%m-%d 2>/dev/null || date -d '-4 hours' +%Y-%m-%d)" ]; echo $?)
+for i in 1 2 3 4 5 6 7 8 9 10; do [ -s "$STATE/index/doctor-brief.txt" ] && break; sleep 0.5; done
+OUT=$(prompt U "next"); check "the daily doctor report arrives on a later prompt" $(echo "$OUT" | grep -q 'memory-maintenance reason="daily-doctor"'; echo $?)
+OUT=$(prompt U "again"); check "the daily report is shown once" $(echo "$OUT" | grep -q 'daily-doctor'; [ $? -ne 0 ]; echo $?)
 
 echo "default backend"
 cat > "$HOME/.claude/memory-config.json" <<'EOF'

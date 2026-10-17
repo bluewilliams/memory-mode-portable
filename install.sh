@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_DIR="$HOME/.claude"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-echo "=== Infinite Memory Mode Installer v2.0 ==="
+echo "=== Infinite Memory Mode Installer v2.3 ==="
 echo ""
 echo "This will install memory mode at the user level (~/.claude/)"
 echo "All projects will automatically have access to memory mode."
@@ -366,6 +366,9 @@ if [ ! -f "$CLAUDE_DIR/user/profile.md" ]; then
 **Created**: $TIMESTAMP
 **Last Updated**: $TIMESTAMP
 
+## Current Chapter
+<!-- What is going on now, 5-10 dated lines. Claude keeps this current. -->
+
 ## Identity
 - **Name**:
 - **Role**:
@@ -408,6 +411,15 @@ if [ ! -f "$CLAUDE_DIR/user/preferences.md" ]; then
 EOF
 fi
 
+if [ ! -f "$CLAUDE_DIR/user/moments.md" ]; then
+    cat > "$CLAUDE_DIR/user/moments.md" << 'EOF'
+# Moments
+
+Interesting things worth remembering, newest first. One line each: `- YYYY-MM-DD [work|personal|us] what happened, and why it matters`.
+
+EOF
+fi
+
 # ─── Auto-Save Hooks ─────────────────────────────────────────────────
 
 echo ""
@@ -427,6 +439,8 @@ chmod +x "$HOOKS_DIR"/*.sh
 # v2.2 maintenance tools (run by hand or at the weekly pass; no hook registration needed)
 mkdir -p "$CLAUDE_DIR/tools"
 cp "$SCRIPT_DIR/tools/memory-index-split.sh" "$CLAUDE_DIR/tools/memory-index-split.sh"
+cp "$SCRIPT_DIR/tools/memory-recall.sh" "$CLAUDE_DIR/tools/memory-recall.sh"
+cp "$SCRIPT_DIR/tools/memory-doctor.sh" "$CLAUDE_DIR/tools/memory-doctor.sh"
 chmod +x "$CLAUDE_DIR/tools/"*.sh
 
 # Initialize state file
