@@ -68,17 +68,39 @@ emit_clock() {
     echo "<memory-clock reason=\"$reason\" now=\"$now_txt\" daypart=\"$daypart\" workday=\"$workday\">Local time: $now_txt ($daypart). Work day: $workday (work before 0${WORKDAY_BOUNDARY_HOUR}:00 counts as the previous day).$gap_txt $guidance</memory-clock>"
 }
 
-# --- v2.2 learning cues: notice things worth remembering about the user and their world. ---
+# --- v2.4 capture and recall cues. Capture is a judgment made on every prompt (see MEMORY.md > Capture
+# Reflex); these cues only add weight when a prompt clearly holds something worth keeping or points back
+# to something said before. ---
 emit_learn() {
     [ -n "$PROMPT_TEXT" ] || return 0
-    local text cues=""
+    local text cues="" b="(^|[^a-z])"
     text=$(printf '%s' "$PROMPT_TEXT" | tr '[:upper:]' '[:lower:]')
-    if printf '%s' "$text" | grep -Eq "(^|[^a-z])(i prefer|i'd prefer|i like|i don't like|i do not like|i hate|i love|please always|please never|always use|never use|from now on|going forward|in the future|remember (that|this)|don't ever|stop doing|i want you to|i'd rather)"; then cues="$cues preference"; fi
-    if printf '%s' "$text" | grep -Eq "(^|[^a-z])my (wife|husband|partner|son|daughter|kids?|children|family|mom|dad|brother|sister|dog|cat|birthday|vacation|manager|boss)|(^|[^a-z])i'm (out|off|on vacation|on pto|traveling|sick)|(^|[^a-z])(birthday|anniversary|pto|time off)([^a-z]|$)"; then cues="$cues personal"; fi
+    if printf '%s' "$text" | grep -Eq "$b(i prefer|i'd prefer|i like|i don't like|i do not like|i hate|i love|please always|please never|always use|never use|from now on|going forward|in the future|remember (that|this)|don't ever|stop doing|i want you to|i'd rather)"; then cues="$cues preference"; fi
+    if printf '%s' "$text" | grep -Eq "${b}my (wife|husband|partner|girlfriend|boyfriend|son|sons|daughter|daughters|kids?|children|family|mom|dad|mother|father|parents|brother|sister|grandma|grandpa|friend|dog|cat|birthday|vacation|manager|boss|team|house|car|health)|${b}i'm (out|off|on vacation|on pto|traveling|sick)|$b(birthday|anniversary|pto|time off)([^a-z]|\$)"; then cues="$cues personal"; fi
+    if printf '%s' "$text" | grep -Eq "$b(hurt|injur|broke|sprain|stitches|cast|sick|fever|flu|covid|surgery|hospital|er visit|doctor|dentist|diagnos|pregnan|new baby|was born|died|passed away|funeral|wedding|engaged|divorce|moving|moved|new house|new job|quit|fired|laid off|let go|promoted|promotion|got hired|resign|retir|graduat|first day|started school)"; then cues="$cues life-event"; fi
+    if printf '%s' "$text" | grep -Eq "$b(excited|nervous|worried|stressed|anxious|frustrated|exhausted|burned out|burnt out|proud|thrilled|bummed|upset|overwhelmed|relieved|can't wait|dreading)([^a-z]|\$)"; then cues="$cues feeling"; fi
+    if printf '%s' "$text" | grep -Eq "$b(tomorrow|tonight|this weekend|next (week|month|year|weekend|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|on (monday|tuesday|wednesday|thursday|friday|saturday|sunday)|(january|february|march|april|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\.? [0-9]{1,2}([^0-9]|\$)|deadline|due (on|by)|party|trip|flight|concert|recital|appointment|conference|interview|demo day|launch day)"; then cues="$cues dated"; fi
+    if printf '%s' "$text" | grep -Eq "$b(i'm (thinking about|planning|going to|considering)|we're (planning|going to|thinking about)|i want to (start|learn|build|try|get)|my goal|someday|eventually i)"; then cues="$cues plan"; fi
     if printf '%s' "$PROMPT_TEXT" | grep -Eq "(with|from|for|ask|tell|told|asked|meeting with|working with|talk to|ping) [A-Z][a-z]{2,}( [A-Z][a-z]{2,})?"; then cues="$cues person"; fi
+    if printf '%s' "$text" | grep -Eq "$b(remember (when|the|that|how|what)|last time|the other day|we (talked|discussed|decided|said|agreed|did) |you (said|told me|mentioned|suggested|recommended)|as (i|we) (said|mentioned|discussed)|like before|did i (tell|mention)|what was (the|that)|do you (know|remember)|what do you (know|remember))"; then
+        echo "<memory-recall-cue>This prompt points back to something from before. Answer from memory, not a guess: run ~/.claude/tools/memory-recall.sh query with its key terms first, and open the session notes for that time when the detail matters.</memory-recall-cue>"
+    fi
     [ -n "$cues" ] || return 0
     cues=$(echo "$cues" | sed 's/^ //')
-    echo "<memory-learn cues=\"$cues\">This prompt may hold something worth remembering. Capture it silently where it belongs, without asking unless it is ambiguous: preferences and corrections -> ~/.claude/user/preferences.md or feedback.md (and People/_Preferences.md); personal context the user shared -> ~/.claude/user/profile.md and People/{name}.md; a named colleague -> check People/ and update or create their note (ask once who they are if unknown). Never store secrets or anything the user asked to forget. If nothing new is here, ignore this.</memory-learn>"
+    echo "<memory-learn cues=\"$cues\">This prompt may hold something worth remembering. If a good colleague would still remember it in a month, capture it silently, filed by what it is about: a person -> People/{name}.md (a dated line under ## Timeline; create the note if needed); the user's life -> ~/.claude/user/profile.md, Current Chapter or moments.md; a preference or correction -> preferences.md; a date ahead, or a check-in worth making later -> ~/.claude/user/calendar.md (- YYYY-MM-DD kind: text, with an exact date); any other subject that will come up again -> Topics/{subject}.md; project work -> the session note. Replace an old value instead of adding a second one. Never store secrets or anything the user asked to forget.</memory-learn>"
+}
+
+# --- v2.4 calendar: once per work day in each session, birthdays, events and follow-ups that are close. ---
+emit_upcoming() {
+    [ -x "$TOOLS_DIR/memory-calendar.sh" ] || return 0
+    local stamp="$STATE_DIR/sessions/upcoming-${SESSION_ID:-shared}.txt" today due
+    today=$(workday_for_epoch "$NOW" 2>/dev/null) || return 0
+    [ "$(cat "$stamp" 2>/dev/null)" = "$today" ] && return 0
+    mkdir -p "$STATE_DIR/sessions" 2>/dev/null
+    echo "$today" > "$stamp" 2>/dev/null || return 0
+    due=$("$TOOLS_DIR/memory-calendar.sh" due 2>/dev/null) || return 0
+    [ -n "$due" ] || return 0
+    printf '<memory-upcoming>Dates you are holding for the user (~/.claude/user/calendar.md). Bring one up when it is natural or useful: a birthday a week out, a check-in on something that just passed. Do not recite the list.\n%s\n</memory-upcoming>\n' "$due"
 }
 
 # --- v2.2 weekly status hygiene: surface notes whose status no longer tells the truth. ---
@@ -113,27 +135,35 @@ run_detached() {
 emit_recall() {
     [ -n "$PROMPT_TEXT" ] && [ -x "$TOOLS_DIR/memory-recall.sh" ] || return 0
     "$TOOLS_DIR/memory-recall.sh" stale 2>/dev/null && run_detached recall "$TOOLS_DIR/memory-recall.sh" build
-    local seen="$STATE_DIR/sessions/recall-${SESSION_ID:-shared}.txt" hits lines
+    local seen="$STATE_DIR/sessions/recall-${SESSION_ID:-shared}.txt" hits lines path facts
     mkdir -p "$STATE_DIR/sessions" 2>/dev/null
     touch "$seen" 2>/dev/null || return 0
     hits=$(printf '%s' "$PROMPT_TEXT" | "$TOOLS_DIR/memory-recall.sh" prompt 2>/dev/null |
         awk -F'\t' -v seen="$seen" 'BEGIN { while ((getline l < seen) > 0) s[l] = 1 } !($3 in s) && !($3 in out) { out[$3] = 1; print }' | head -5)
-    # The first prompt of a session (or after a long gap) also gets the notes most related to its topic.
-    if [ "$CLOCK_REASON" = "session-start" ] || [ "$CLOCK_REASON" = "long-gap" ] || [ "$CLOCK_REASON" = "new-workday" ]; then
-        local words related
-        words=$(printf '%s' "$PROMPT_TEXT" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' ' ' | tr ' ' '\n' |
-            grep -Ev '^(.{0,3}|about|after|again|also|because|before|being|could|does|doing|from|have|into|just|like|make|more|need|please|really|should|some|that|their|them|then|there|these|they|thing|things|this|want|what|when|where|which|while|will|with|would|your|yours)$' | awk '!s[$0]++' | head -8 | tr '\n' ' ')
-        if [ -n "$words" ]; then
-            related=$("$TOOLS_DIR/memory-recall.sh" query -t -n 12 $words 2>/dev/null | HITS="$hits" awk -F'\t' -v seen="$seen" '
-                BEGIN { while ((getline l < seen) > 0) s[l] = 1; n = split(ENVIRON["HITS"], h, "\n"); for (i = 1; i <= n; i++) { split(h[i], f, "\t"); s[f[3]] = 1 } }
-                $1 >= 2 && $3 !~ /^~\// && !($3 in s) { printf "related\t%s\t%s\t%s\n", $4, $3, $5; if (++c == 4) exit }')
-            [ -n "$related" ] && hits="$hits${hits:+
+    # Every prompt also gets the notes most related to its topic. The first prompt of a session (or after a
+    # long gap) casts a wider net; later prompts need a stronger match, so only clear hits come back.
+    local words related min=3 max=2
+    if [ "$CLOCK_REASON" = "session-start" ] || [ "$CLOCK_REASON" = "long-gap" ] || [ "$CLOCK_REASON" = "new-workday" ]; then min=2; max=4; fi
+    words=$(printf '%s' "$PROMPT_TEXT" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' ' ' | tr ' ' '\n' |
+        grep -Ev '^(.{0,3}|about|after|again|also|because|before|being|could|does|doing|from|have|into|just|like|make|more|need|please|really|should|some|that|their|them|then|there|these|they|thing|things|this|want|what|when|where|which|while|will|with|would|your|yours)$' | awk '!s[$0]++' | head -8 | tr '\n' ' ')
+    if [ -n "$words" ]; then
+        related=$("$TOOLS_DIR/memory-recall.sh" query -t -n 15 $words 2>/dev/null | HITS="$hits" awk -F'\t' -v seen="$seen" -v min="$min" -v max="$max" '
+            BEGIN { while ((getline l < seen) > 0) s[l] = 1; n = split(ENVIRON["HITS"], h, "\n"); for (i = 1; i <= n; i++) { split(h[i], f, "\t"); s[f[3]] = 1 } }
+            $1 >= min && $3 !~ /^~\// && $4 != "fact" && !($3 in s) { s[$3] = 1; printf "related\t%s\t%s\t%s\n", $4, $3, $5; if (++c == max) exit }')
+        [ -n "$related" ] && hits="$hits${hits:+
 }$related"
-        fi
     fi
     [ -n "$hits" ] || return 0
     printf '%s\n' "$hits" | cut -f3 >> "$seen"
-    lines=$(printf '%s\n' "$hits" | awk -F'\t' '{ s = $4; if (length(s) > 220) s = substr(s, 1, 217) "..."; printf "- %s (%s): %s -> %s\n", $1, $2, s, $3 }')
+    # A recalled person or topic brings its newest dated facts along, so recent news is not missed.
+    lines=$(printf '%s\n' "$hits" | while IFS=$'\t' read -r term kind path summary; do
+        [ ${#summary} -gt 220 ] && summary="${summary:0:217}..."
+        facts=""
+        if [ "$kind" = "person" ] || [ "$kind" = "topic" ]; then
+            facts=$("$TOOLS_DIR/memory-recall.sh" facts "$path" 2 2>/dev/null | cut -c1-160 | paste -sd ';' - | sed 's/;/; /g')
+        fi
+        printf -- '- %s (%s): %s%s -> %s\n' "$term" "$kind" "$summary" "${facts:+ Latest: $facts}" "$path"
+    done)
     printf '<memory-recall>You already know these from earlier work. Use them as your own recollection, and open the note when the detail matters:\n%s\n</memory-recall>\n' "$lines"
 }
 
@@ -162,6 +192,7 @@ fi
 emit_clock 2>/dev/null || true
 emit_learn 2>/dev/null || true
 emit_recall 2>/dev/null || true
+emit_upcoming 2>/dev/null || true
 emit_daily_maintenance 2>/dev/null || true
 emit_status_hygiene 2>/dev/null || true
 

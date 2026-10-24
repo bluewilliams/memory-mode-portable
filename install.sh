@@ -9,11 +9,25 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_DIR="$HOME/.claude"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-echo "=== Infinite Memory Mode Installer v2.3 ==="
+echo "=== Infinite Memory Mode Installer v2.4 ==="
 echo ""
 echo "This will install memory mode at the user level (~/.claude/)"
 echo "All projects will automatically have access to memory mode."
 echo ""
+
+for tool in jq git; do
+    if ! command -v "$tool" &> /dev/null; then
+        echo "ERROR: $tool is required. Install it first (macOS: brew install $tool; Linux: apt install $tool), then re-run."
+        exit 1
+    fi
+done
+
+# The name lets Claude greet you from the first session; everything else it learns as you work.
+USER_NAME=""
+if [ ! -f "$CLAUDE_DIR/user/profile.md" ] || ! grep -qE '^- \*\*Name\*\*: *[^ ]' "$CLAUDE_DIR/user/profile.md"; then
+    read -p "Your first name (Claude uses it to greet you; Enter to skip): " USER_NAME || true
+    read -p "Your role (for example Principal Software Architect; Enter to skip): " USER_ROLE || true
+fi
 
 # Create required directories
 echo "Creating directories..."
@@ -135,13 +149,14 @@ if [ "$BACKEND_CHOICE" = "2" ]; then
     echo "Setting up Obsidian vault structure..."
 
     # Create folder structure
-    mkdir -p "$CLAUDE_ROOT"/{.claude-state,Projects,Decisions,Analysis,Sessions,Progress,Sub-Agents,Brag,Meetings}
+    mkdir -p "$CLAUDE_ROOT"/{.claude-state,Projects,Decisions,Analysis,Sessions,Progress,Sub-Agents,Brag,Meetings,Lessons,Runbooks,Topics}
     mkdir -p "$CLAUDE_ROOT"/Resources/{PDFs,Images,Documents,Snippets,References,"Meeting Notes"}
     mkdir -p "$CLAUDE_ROOT"/People
     mkdir -p "$CLAUDE_ROOT"/_Templates
 
     # Copy templates
     echo "  Installing templates..."
+    PERSON_NOTE="${USER_NAME:-Your Name}"
     for template in "$SCRIPT_DIR"/obsidian-templates/*.md; do
         if [ -f "$template" ]; then
             filename=$(basename "$template")
@@ -149,7 +164,7 @@ if [ "$BACKEND_CHOICE" = "2" ]; then
             # go to their proper locations; actual templates go to _Templates/
             case "$filename" in
                 _Dashboard.md)
-                    cp "$template" "$CLAUDE_ROOT/_Dashboard.md"
+                    sed "s|Claude/People/Your Name|${BASE_PATH:+$BASE_PATH/}People/$PERSON_NOTE|" "$template" > "$CLAUDE_ROOT/_Dashboard.md"
                     echo "    _Dashboard.md → Claude root"
                     # Create shortcut at vault root for easy access
                     if [ ! -f "$VAULT_PATH/!Dashboard.md" ]; then
@@ -186,9 +201,9 @@ DASHEOF
                     fi
                     ;;
                 Person.md)
-                    if [ ! -f "$CLAUDE_ROOT/People/Your Name.md" ]; then
-                        cp "$template" "$CLAUDE_ROOT/People/Your Name.md"
-                        echo "    Person.md → People/Your Name.md"
+                    if [ ! -f "$CLAUDE_ROOT/People/$PERSON_NOTE.md" ]; then
+                        sed "s/^# Your Name$/# $PERSON_NOTE/" "$template" > "$CLAUDE_ROOT/People/$PERSON_NOTE.md"
+                        echo "    Person.md → People/$PERSON_NOTE.md"
                     else
                         echo "    Person note already exists, skipping"
                     fi
@@ -209,6 +224,36 @@ DASHEOF
             esac
         fi
     done
+
+    # Breadcrumb indexes and the knowledge map: Claude reads these at session start to know what exists.
+    for idx in Projects Decisions Analysis Lessons Runbooks Topics; do
+        if [ ! -f "$CLAUDE_ROOT/$idx/_Index.md" ]; then
+            printf -- '---\ntype: resource\ndate: %s\nsummary: "Breadcrumb index for %s/"\ntags:\n  - resource\n  - documentation\n---\n\n# %s Index\n\nOne line per note: `- [[%s/{note}]] - one-line summary.` Newest first for dated notes.\n\n' \
+                "$(date +%Y-%m-%d)" "$idx" "$idx" "$idx" > "$CLAUDE_ROOT/$idx/_Index.md"
+        fi
+    done
+    if [ ! -f "$CLAUDE_ROOT/.claude-state/knowledge-map.md" ]; then
+        cat > "$CLAUDE_ROOT/.claude-state/knowledge-map.md" << 'KMEOF'
+# Knowledge Map
+
+Read this on every session start. Check the breadcrumb before claiming "I don't have notes on X".
+
+| Category | Breadcrumb | What's in it |
+|---|---|---|
+| People | [[People/_Preferences]] (People Roster) | Everyone the user works with or knows |
+| Projects | [[Projects/_Index]] | Tracked projects |
+| Decisions | [[Decisions/_Index]] | Dated decision log |
+| Analysis | [[Analysis/_Index]] | Research, deep dives, RCAs |
+| Topics | [[Topics/_Index]] | Recurring subjects that are not a person or a project |
+| Lessons | [[Lessons/_Index]] | Cross-project engineering lessons (on demand) |
+| Runbooks | [[Runbooks/_Index]] | Repeatable procedures |
+| Resources | [[Resources/_Resource Index]] | References and shared files |
+| Calendar | `~/.claude/user/calendar.md` | Birthdays, events, deadlines, follow-ups |
+| Recall | `~/.claude/tools/memory-recall.sh query <terms>` | Ranked search over every note and the user's memory files |
+| Topics across projects | [[.claude-state/global-index]] | Cross-project topic map |
+| Current project | `.claude-state/{project-key}/recent.md` | Hot cache |
+KMEOF
+    fi
 
     # Collapse vault path back to ~ for config storage
     VAULT_PATH_CONFIG="${VAULT_PATH/#$HOME/~}"
@@ -271,7 +316,7 @@ echo "Writing memory-config.json..."
 if [ "$BACKEND" = "obsidian" ]; then
     cat > "$CLAUDE_DIR/memory-config.json" << EOF
 {
-  "version": "2.0.0",
+  "version": "2.4.0",
   "backend": "obsidian",
   "obsidian": {
     "vaultPath": "$VAULT_PATH_CONFIG",
@@ -289,7 +334,7 @@ EOF
 else
     cat > "$CLAUDE_DIR/memory-config.json" << EOF
 {
-  "version": "2.0.0",
+  "version": "2.4.0",
   "backend": "default",
   "obsidian": {
     "vaultPath": "",
@@ -370,8 +415,8 @@ if [ ! -f "$CLAUDE_DIR/user/profile.md" ]; then
 <!-- What is going on now, 5-10 dated lines. Claude keeps this current. -->
 
 ## Identity
-- **Name**:
-- **Role**:
+- **Name**: $USER_NAME
+- **Role**: $USER_ROLE
 - **Experience Level**:
 
 ## Background
@@ -420,6 +465,16 @@ Interesting things worth remembering, newest first. One line each: `- YYYY-MM-DD
 EOF
 fi
 
+if [ ! -f "$CLAUDE_DIR/user/calendar.md" ]; then
+    cat > "$CLAUDE_DIR/user/calendar.md" << 'EOF'
+# Calendar
+
+Dates ahead, one per line: `- YYYY-MM-DD kind: text -> [[optional link]]`.
+Yearly kinds (birthday, anniversary) repeat; every other kind (event, trip, deadline, appointment, follow-up, reminder) happens once and is removed when done.
+
+EOF
+fi
+
 # ─── Auto-Save Hooks ─────────────────────────────────────────────────
 
 echo ""
@@ -441,6 +496,8 @@ mkdir -p "$CLAUDE_DIR/tools"
 cp "$SCRIPT_DIR/tools/memory-index-split.sh" "$CLAUDE_DIR/tools/memory-index-split.sh"
 cp "$SCRIPT_DIR/tools/memory-recall.sh" "$CLAUDE_DIR/tools/memory-recall.sh"
 cp "$SCRIPT_DIR/tools/memory-doctor.sh" "$CLAUDE_DIR/tools/memory-doctor.sh"
+cp "$SCRIPT_DIR/tools/memory-calendar.sh" "$CLAUDE_DIR/tools/memory-calendar.sh"
+cp "$SCRIPT_DIR/tools/memory-sweep.sh" "$CLAUDE_DIR/tools/memory-sweep.sh"
 chmod +x "$CLAUDE_DIR/tools/"*.sh
 
 # Initialize state file
@@ -588,18 +645,20 @@ if [ "$BACKEND" = "obsidian" ]; then
     echo "  $CLAUDE_ROOT/Resources/      - Shared files & references"
     echo "  $CLAUDE_ROOT/People/         - People & preferences"
     echo "  $CLAUDE_ROOT/Lessons/        - Cross-project engineering lessons (on-demand)"
+    echo "  $CLAUDE_ROOT/Topics/         - Recurring subjects (not a person or project)"
 fi
 echo ""
 echo "Next steps:"
 if [ "$BACKEND" = "obsidian" ]; then
-    echo "  1. Open your vault in Obsidian and edit People/Your Name.md with your info"
-    echo "  2. That's it. Memory is always on. Just start working."
+    echo "  1. Open Obsidian > Open folder as vault > $VAULT_PATH"
+    echo "  2. When Obsidian asks, choose 'Trust author and enable plugins' (the dashboard needs Dataview)."
+    echo "  3. Start Claude Code anywhere. Memory is always on; Claude fills in your profile as you work."
     echo ""
     echo "  Optional: Enable Templates core plugin (Settings → Core Plugins → Templates)"
     echo "            Set template folder to: ${BASE_PATH:+$BASE_PATH/}_Templates"
 else
-    echo "  1. Edit ~/.claude/user/profile.md with your info"
-    echo "  2. Open any project and start working. Memory is always on."
+    echo "  1. Start Claude Code anywhere. Memory is always on."
+    echo "  2. Optional: add more about yourself to ~/.claude/user/profile.md (Claude also learns as you work)."
 fi
 echo ""
 echo "To switch backends later, edit ~/.claude/memory-config.json"

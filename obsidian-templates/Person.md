@@ -15,6 +15,9 @@ tags:
 - **Team**: 
 - **Experience**: 
 
+## Timeline
+<!-- Dated news and facts about this person, newest first: - YYYY-MM-DD what happened. Recall shows the newest two whenever they are named. -->
+
 ## Background
 
 ## Working Style

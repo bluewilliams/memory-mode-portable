@@ -1,5 +1,5 @@
 #!/bin/bash
-# memory-doctor.sh - daily health check for the memory vault (v2.3)
+# memory-doctor.sh - daily health check for the memory vault (v2.4)
 #
 # Finds the problems that make memory hard to recall, and fixes the ones that are safe to fix:
 #   duplicates     People notes that share a name, an alias or a name prefix (Mitch / Mitchell)
@@ -9,11 +9,13 @@
 #   big-caches     hot caches over 30 KB, and a global index over 40 KB
 #   legacy-state   .claude-state folders with no project note, untouched for 60+ days
 #   em-dashes      vault notes that still contain an em dash
+#   capture-sweep  prompts since the last capture sweep, waiting to be read (memory-sweep.sh)
+#   calendar       one-time calendar items long past that were never closed out
 #
 # Usage:
 #   memory-doctor.sh            Full report (markdown).
 #   memory-doctor.sh --brief    A short report for the daily maintenance block.
-#   memory-doctor.sh --fix      Run the safe fixes first: rebuild the recall index, split an oversized
+#   memory-doctor.sh --fix      Run the safe fixes first: rebuild the recall index, collect the capture sweep, split an oversized
 #                               global index (backed up), then report what is left for judgment.
 #
 # Read-only unless --fix. It never merges, renames or deletes a note: that needs judgment.
@@ -46,6 +48,7 @@ FIXED=""
 
 if [ -n "$FIX" ]; then
     "$TOOLS_DIR/memory-recall.sh" build >/dev/null 2>&1 && FIXED="$FIXED recall-index"
+    [ -x "$TOOLS_DIR/memory-sweep.sh" ] && "$TOOLS_DIR/memory-sweep.sh" collect >/dev/null 2>&1
     gi="$STATE_DIR/global-index.md"
     if [ -f "$gi" ] && [ "$(wc -c < "$gi")" -gt 40960 ] && [ -x "$TOOLS_DIR/memory-index-split.sh" ]; then
         "$TOOLS_DIR/memory-index-split.sh" >/dev/null 2>&1 && FIXED="$FIXED index-split"
@@ -63,6 +66,14 @@ section() { # section <name> <one-line why> <lines...> (reads lines from stdin)
     { echo "## $name ($count)"; echo "$why"; printf '%s\n' "$body" | sed 's/^/- /'; echo; } >> "$OUT"
 }
 
+# Capture sweep first: it is the most valuable item in the daily pass.
+[ -x "$TOOLS_DIR/memory-sweep.sh" ] && "$TOOLS_DIR/memory-sweep.sh" status |
+    section "capture-sweep" "What the user typed since the last sweep. Read it (a background subagent is best), capture what is worth keeping and missing from memory, then run memory-sweep.sh done."
+
+# Calendar items that passed and were never closed out.
+[ -x "$TOOLS_DIR/memory-calendar.sh" ] && "$TOOLS_DIR/memory-calendar.sh" stale |
+    section "calendar" "One-time calendar items more than 14 days past. Record the outcome where it belongs (People Timeline, moments), then remove the line."
+
 # Duplicates: one term pointing at two People notes, or one single-word name that starts another name.
 {
     [ -f "$ENTITIES" ] && awk -F'\t' '$2 == "person" { if (!(($1, $3) in s)) { s[$1, $3] = 1; n[$1]++; p[$1] = p[$1] (p[$1] ? " | " : "") $3 } }
@@ -73,7 +84,7 @@ section() { # section <name> <one-line why> <lines...> (reads lines from stdin)
 } | sort -u | section "duplicates" "Possible duplicate People notes. Read both; merge only when they are the same person (keep the fuller note, move aliases, repoint links)."
 
 # Broken links.
-grep -rhoE '\[\[Claude/[^]|#]+' "$ROOT" --include='*.md' 2>/dev/null | sed 's/^\[\[//' | sort -u | while IFS= read -r target; do
+grep -rhoE '\[\[Claude/[^]|#]+' "$ROOT" --include='*.md' --exclude-dir=_Templates 2>/dev/null | sed 's/^\[\[//' | sort -u | while IFS= read -r target; do
     [ -e "$VAULT_PARENT/$target.md" ] || [ -e "$VAULT_PARENT/$target" ] || echo "$target"
 done | head -40 | section "broken-links" "Links to notes that do not exist. Fix the link (renamed note) or write a stub."
 
@@ -106,12 +117,12 @@ for d in "$STATE_DIR"/*/; do
     k=$(basename "$d")
     case "$k" in index|sessions|backups) continue ;; esac
     [ -f "$ROOT/Projects/$k.md" ] && continue
-    m=$(stat -f %m "$d" 2>/dev/null || stat -c %Y "$d" 2>/dev/null || echo "$NOW")
+    m=$(stat -c %Y "$d" 2>/dev/null || stat -f %m "$d" 2>/dev/null || echo "$NOW")
     [ $(( (NOW - m) / 86400 )) -ge 60 ] && echo "$k (no project note, untouched $(( (NOW - m) / 86400 ))d)"
 done | head -40 | section "legacy-state" "State folders with no project. Move anything useful to the right project, then remove the folder."
 
 # Em dashes.
-grep -rlF '—' "$ROOT" --include='*.md' 2>/dev/null | grep -v '/.claude-state/' | sed "s|^$ROOT/||" | head -40 |
+grep -rlF '—' "$ROOT" --include='*.md' 2>/dev/null | grep -v -e '/.claude-state/' -e '/_Templates/' | sed "s|^$ROOT/||" | head -40 |
     section "em-dashes" "Vault notes with an em dash. Replace them when you touch the note."
 
 if [ "$MODE" = "brief" ]; then

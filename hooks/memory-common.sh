@@ -133,6 +133,13 @@ format_epoch() {
     fi
 }
 
+# The local-noon epoch for a YYYY-MM-DD date (noon keeps day math clear of DST shifts). Empty when invalid.
+epoch_for_date() {
+    local d="$1"
+    printf '%s' "$d" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' || return 1
+    date -j -f "%Y-%m-%d %H:%M:%S" "$d 12:00:00" +%s 2>/dev/null || date -d "$d 12:00:00" +%s 2>/dev/null
+}
+
 # The part of the day for a local hour (0-23).
 daypart_for_hour() {
     local h=$((10#$1))

@@ -52,9 +52,10 @@ for dir in Analysis Decisions Progress Projects "Resources/References"; do
 done
 [ "${#FILES[@]}" -gt 0 ] || exit 0
 
-# File modification dates, for notes with no date in their frontmatter: one stat call, BSD or GNU.
-MTIMES=$(stat -f '%Sm%t%N' -t %Y-%m-%d "${FILES[@]}" 2>/dev/null) \
-    || MTIMES=$(stat -c '%y%t%n' "${FILES[@]}" 2>/dev/null | awk -F'\t' '{ print substr($1, 1, 10) "\t" $2 }') \
+# File modification dates, for notes with no date in their frontmatter: one stat call, GNU or BSD.
+# GNU goes first: GNU stat -f means file system status and succeeds with the wrong output.
+MTIMES=$(stat --printf '%y\t%n\n' "${FILES[@]}" 2>/dev/null | awk -F'\t' '{ print substr($1, 1, 10) "\t" $2 }') && [ -n "$MTIMES" ] \
+    || MTIMES=$(stat -f '%Sm%t%N' -t %Y-%m-%d "${FILES[@]}" 2>/dev/null) \
     || MTIMES=$(for f in "${FILES[@]}"; do printf '%s\t%s\n' "$TODAY" "$f"; done)
 
 # A project note is rarely edited while the project stays busy, so its age is the newest session for it.

@@ -5,11 +5,13 @@
 #   memory-recall.sh query [-n N] [-t] <terms...>
 #                                      Rank notes and memory lines by the terms (12 results; -t prints TSV).
 #   memory-recall.sh prompt            Read a prompt on stdin and print the known entities it names.
+#   memory-recall.sh facts <path> [N]  The newest dated facts recorded in a People or Topics note (3 by default).
 #   memory-recall.sh stale             Exit 0 when the catalog needs a rebuild.
 #
 # Files (in the state dir, index/):
-#   catalog.tsv   path, type, date, title, summary (one row per note, plus one row per line of the user's memory files)
-#   entities.tsv  term (lowercase), kind, path, summary (people, projects, tickets)
+#   catalog.tsv   path, type, date, title, summary (one row per note, one row per bullet in People and Topics
+#                 notes (type fact), and one row per line of the user's memory files)
+#   entities.tsv  term (lowercase), kind, path, summary (people, topics, projects, tickets)
 #
 # NOTE: Do NOT use `set -e`. The prompt mode runs inside a hook and must never fail loudly.
 
@@ -72,6 +74,24 @@ scan_notes() {
     ' 2>/dev/null
 }
 
+# One row per bullet in the body of a People or Topics note: what is known about that person or subject.
+scan_facts() {
+    local dirs=()
+    for d in People Topics; do [ -d "$ROOT/$d" ] && dirs+=("$ROOT/$d"); done
+    [ ${#dirs[@]} -gt 0 ] || return 0
+    find "${dirs[@]}" -type f -name '*.md' -not -name '_*' -print0 2>/dev/null |
+    xargs -0 awk -v root="$ROOT/" '
+        FNR == 1 { path = FILENAME; sub(root, "", path); title = ""; infm = ($0 == "---"); n = 0; if (infm) next }
+        infm { if ($0 == "---") infm = 0; next }
+        title == "" && /^# / { title = substr($0, 3); next }
+        /^[ ]*[-*] / && n < 300 {
+            line = $0; sub(/^[ ]*[-*] /, "", line); gsub(/\t/, " ", line)
+            if (length(line) < 4) next
+            d = ""; if (match(line, /^\**[0-9]{4}-[0-9]{2}-[0-9]{2}/)) { d = substr(line, RSTART, RLENGTH); gsub(/\*/, "", d) }
+            printf "%s\tfact\t%s\t%s\t%s\n", path, d, (title != "" ? title : path), line; n++
+        }' 2>/dev/null
+}
+
 cmd_build() {
     [ -n "$ROOT" ] && [ -d "$ROOT" ] || { echo "memory-recall: no memory root found" >&2; return 1; }
     mkdir -p "$INDEX_DIR" || return 1
@@ -81,7 +101,8 @@ cmd_build() {
 
     # Catalog: every note, then every dated line of the user's own memory files.
     cut -f1-5 "$tmp_notes" > "$tmp_cat"
-    for f in moments observations profile; do
+    scan_facts >> "$tmp_cat"
+    for f in moments observations profile preferences calendar; do
         [ -f "$USER_DIR/$f.md" ] || continue
         awk -v p="~/.claude/user/$f.md" -v t="user-$f" '
             /^#/ { h = $0; sub(/^#+ */, "", h); next }
@@ -108,6 +129,12 @@ cmd_build() {
             for (i = 1; i <= n; i++) add(al[i], "person", $1, $5)
             split(name, w, " "); if (w[2] != "") { first[tolower(w[1])]++; fpath[tolower(w[1])] = $1; fsum[tolower(w[1])] = $5 }
         }
+        $1 ~ /^Topics\// && $1 !~ /\/_/ {
+            name = $1; sub(/^Topics\//, "", name); sub(/\.md$/, "", name)
+            add(name, "topic", $1, $5)
+            n = split($6, al, ",")
+            for (i = 1; i <= n; i++) add(al[i], "topic", $1, $5)
+        }
         $1 ~ /^Projects\// && $1 !~ /\/_/ {
             key = $1; sub(/^Projects\//, "", key); sub(/\.md$/, "", key)
             add(key, "project", $1, $5)
@@ -131,13 +158,13 @@ cmd_build() {
 cmd_stale() {
     [ -f "$CATALOG" ] && [ -f "$ENTITIES" ] || return 0
     local age
-    age=$(( $(date +%s) - $(stat -f %m "$CATALOG" 2>/dev/null || stat -c %Y "$CATALOG" 2>/dev/null || echo 0) ))
+    age=$(( $(date +%s) - $(stat -c %Y "$CATALOG" 2>/dev/null || stat -f %m "$CATALOG" 2>/dev/null || echo 0) ))
     [ "$age" -ge "$STALE_AFTER_SEC" ] && return 0
     [ -n "$(find "$ROOT" "$USER_DIR" -name '*.md' -newer "$CATALOG" -not -path '*/.claude-state/*' -print -quit 2>/dev/null)" ] && return 0
     return 1
 }
 
-# Score = terms found in the title and summary (title and path hits count double), newest first on ties.
+# Score = terms found in the title and summary (title and path hits count double), ranked by term rarity.
 cmd_query() {
     local limit=12 tsv=""
     while [ $# -gt 0 ]; do
@@ -150,18 +177,29 @@ cmd_query() {
     [ $# -gt 0 ] || { echo "usage: memory-recall.sh query [-n N] [-t] <terms...>" >&2; return 1; }
     cmd_stale && cmd_build
     [ -f "$CATALOG" ] || return 1
+    # Pass 1 counts how many rows hold each term; pass 2 ranks rows with rare terms above common ones.
+    # The printed score stays the plain hit count, so callers can use it as a threshold.
     TERMS="$*" awk -F'\t' '
         BEGIN { n = split(tolower(ENVIRON["TERMS"]), t, /[ ,]+/) }
+        FNR == NR { rows++; hay = tolower($4 " " $5); for (i = 1; i <= n; i++) if (length(t[i]) > 1 && index(hay, t[i])) df[i]++; next }
         {
-            hay = tolower($4 " " $5); key = tolower($1 " " $4); s = 0
-            for (i = 1; i <= n; i++) if (length(t[i]) > 1 && index(hay, t[i])) s += (index(key, t[i]) ? 2 : 1)
-            if (s > 0) printf "%d\t%s\t%s\t%s\t%s\n", s, $3, $1, $2, ($5 != "" ? $5 : $4)
-        }' "$CATALOG" | sort -t$'\t' -k1,1nr -k2,2r | head -n "$limit" |
+            hay = tolower($4 " " $5); key = tolower($1 " " $4); s = 0; w = 0
+            for (i = 1; i <= n; i++) if (length(t[i]) > 1 && index(hay, t[i])) {
+                hit = (index(key, t[i]) ? 2 : 1); s += hit; w += hit * log((rows + 1) / (df[i] + 1))
+            }
+            if (s > 0) printf "%.4f\t%d\t%s\t%s\t%s\t%s\n", w, s, $3, $1, $2, ($5 != "" ? $5 : $4)
+        }' "$CATALOG" "$CATALOG" | sort -t$'\t' -k1,1gr -k3,3r | cut -f2- | head -n "$limit" |
         awk -F'\t' -v tsv="$tsv" '{ if (tsv) print; else printf "- [%s%s] %s - %s\n", $4, ($2 != "" ? " " $2 : ""), $3, $5 }'
 }
 
 # Entities named in the prompt, matched on word boundaries. Prints "term<TAB>kind<TAB>path<TAB>summary".
 # A one-word person name must be capitalized in the prompt, so "hash" in "the commit hash" is not Hash.
+cmd_facts() {
+    local path="$1" n="${2:-3}"
+    [ -n "$path" ] && [ -f "$CATALOG" ] || return 0
+    awk -F'\t' -v p="$path" '$1 == p && $2 == "fact" && $3 != ""' "$CATALOG" | sort -t$'\t' -k3,3r | head -n "$n" | cut -f5
+}
+
 cmd_prompt() {
     [ -f "$ENTITIES" ] || return 0
     P="$(head -c 4000)" awk -F'\t' '
@@ -188,6 +226,7 @@ case "$1" in
     build) cmd_build ;;
     query) shift; cmd_query "$@" ;;
     prompt) cmd_prompt ;;
+    facts) shift; cmd_facts "$@" ;;
     stale) cmd_stale ;;
-    *) sed -n '2,12p' "$0"; exit 1 ;;
+    *) sed -n '2,14p' "$0"; exit 1 ;;
 esac

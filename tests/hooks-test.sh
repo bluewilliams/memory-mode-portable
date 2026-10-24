@@ -50,6 +50,12 @@ OUT=$(prompt B "From now on I prefer short answers"); check "a preference is not
 OUT=$(prompt B "I have a meeting with Tony Anderson at 10"); check "a named colleague is noticed" $(echo "$OUT" | grep -q 'cues=".*person'; echo $?)
 OUT=$(prompt B "my daughter has a recital tonight"); check "personal context is noticed" $(echo "$OUT" | grep -q 'cues=".*personal'; echo $?)
 OUT=$(prompt B "run the tests please"); check "a plain request gets no learning cue" $(echo "$OUT" | grep -q 'memory-learn'; [ $? -ne 0 ]; echo $?)
+check "a plain request gets no recall cue" $(echo "$OUT" | grep -q 'memory-recall-cue'; [ $? -ne 0 ]; echo $?)
+OUT=$(prompt B "Elijah hurt his arm at recess today"); check "a life event is noticed" $(echo "$OUT" | grep -q 'cues=".*life-event'; echo $?)
+OUT=$(prompt B "the demo is next friday and I'm stressed about it"); check "a date ahead is noticed" $(echo "$OUT" | grep -q 'cues=".*dated'; echo $?)
+check "a feeling is noticed" $(echo "$OUT" | grep -q 'cues=".*feeling'; echo $?)
+check "the capture cue files by subject" $(echo "$OUT" | grep -q 'calendar.md'; echo $?)
+OUT=$(prompt B "remember when we fixed the webhook?"); check "a reference to the past gets a recall cue" $(echo "$OUT" | grep -q '<memory-recall-cue>'; echo $?)
 
 echo "per-session activity"
 tool C Edit '{"file_path":"/x/a.ts"}'
@@ -161,6 +167,79 @@ check "the first prompt of a work day stamps the daily pass" $([ "$(cat "$STATE/
 for i in 1 2 3 4 5 6 7 8 9 10; do [ -s "$STATE/index/doctor-brief.txt" ] && break; sleep 0.5; done
 OUT=$(prompt U "next"); check "the daily doctor report arrives on a later prompt" $(echo "$OUT" | grep -q 'memory-maintenance reason="daily-doctor"'; echo $?)
 OUT=$(prompt U "again"); check "the daily report is shown once" $(echo "$OUT" | grep -q 'daily-doctor'; [ $? -ne 0 ]; echo $?)
+
+echo "facts and topics"
+printf -- '---\ntype: person\nrole: Product Manager\naliases:\n  - Tony\n---\n# Tony Anderson\n\n## Timeline\n- 2026-10-20 Tony broke his wrist skiing\n- 2026-09-01 Tony moved to the Platform team\n\n## Background\n- Likes long walks\n' > "$ROOT/People/Tony Anderson.md"
+mkdir -p "$ROOT/Topics"
+printf -- '---\ntype: topic\nsummary: "The family lake cabin"\n---\n# Cabin\n\n## Timeline\n- 2026-10-01 The dock needs new boards\n' > "$ROOT/Topics/Cabin.md"
+"$T/memory-recall.sh" build
+OUT=$("$T/memory-recall.sh" facts "People/Tony Anderson.md" 1)
+check "facts returns the newest dated line" $([ "$OUT" = "2026-10-20 Tony broke his wrist skiing" ]; echo $?)
+OUT=$("$T/memory-recall.sh" query wrist)
+check "query finds a fact in a People note body" $(echo "$OUT" | grep -q 'fact 2026-10-20.*Tony Anderson'; echo $?)
+for i in 1 2 3 4 5; do printf -- '---\ntype: analysis\nsummary: "Widget note %s"\n---\n# Widget %s\n' $i $i > "$ROOT/Analysis/Widget $i.md"; done
+printf -- '---\ntype: decision\nsummary: "Quasar rollout plan"\n---\n# Quasar\n' > "$ROOT/Analysis/Quasar.md"
+"$T/memory-recall.sh" build
+OUT=$("$T/memory-recall.sh" query -n 1 widget quasar)
+check "a rare term outranks a common one" $(echo "$OUT" | grep -q 'Quasar'; echo $?)
+OUT=$("$T/memory-recall.sh" query walks)
+check "query finds an undated bullet too" $(echo "$OUT" | grep -q 'Likes long walks'; echo $?)
+OUT=$(echo "we should fix the cabin dock" | "$T/memory-recall.sh" prompt)
+check "a topic is recalled by name" $(echo "$OUT" | grep -q $'^cabin\ttopic\tTopics/Cabin.md'; echo $?)
+OUT=$(prompt V "ask Tony Anderson about the release")
+check "a recalled person brings their latest facts" $(echo "$OUT" | grep -q 'Latest: 2026-10-20 Tony broke his wrist skiing'; echo $?)
+prompt W "hello there" > /dev/null
+OUT=$(prompt W "continue the stripe webhook hardening for the launch")
+check "a later prompt with a strong topic match recalls related notes" $(echo "$OUT" | grep -q 'related (session)'; echo $?)
+OUT=$(prompt W "and the webhook again")
+check "a later prompt with a weak match recalls nothing extra" $(echo "$OUT" | grep -q 'related ('; [ $? -ne 0 ]; echo $?)
+
+echo "calendar"
+day() { date -v"$1"d +%Y-%m-%d 2>/dev/null || date -d "$1 days" +%Y-%m-%d; }
+cat > "$HOME/.claude/user/calendar.md" <<EOF
+# Calendar
+- 1985-$(day +5 | cut -c6-) birthday: Nicole O'Connell -> [[People/Nicole O'Connell]]
+- $(day +3) follow-up: Ask how Elijah's arm is healing
+- $(day -2) event: Demo day
+- $(day -40) trip: Old trip
+- $(day +60) deadline: Far away
+EOF
+OUT=$("$T/memory-calendar.sh" due)
+check "a follow-up in 3 days is due" $(echo "$OUT" | grep -q "in 3d .*follow-up: Ask how Elijah's arm"; echo $?)
+check "a birthday shows the age, before the link" $(echo "$OUT" | grep -q "birthday: Nicole O'Connell (turns [0-9]*) -> \[\[People"; echo $?)
+check "a passed event asks for the outcome" $(echo "$OUT" | grep -q "2d ago .*Demo day \[passed"; echo $?)
+check "an item 60 days out is not due" $(echo "$OUT" | grep -q 'Far away'; [ $? -ne 0 ]; echo $?)
+check "an item 40 days past is not due" $(echo "$OUT" | grep -q 'Old trip'; [ $? -ne 0 ]; echo $?)
+OUT=$("$T/memory-calendar.sh" stale)
+check "an item 40 days past is stale" $(echo "$OUT" | grep -q 'Old trip'; echo $?)
+check "a yearly item is never stale" $(echo "$OUT" | grep -q 'Nicole'; [ $? -ne 0 ]; echo $?)
+OUT=$(prompt X "hi"); check "the first prompt gets the upcoming block" $(echo "$OUT" | grep -q '<memory-upcoming>'; echo $?)
+OUT=$(prompt X "hi again"); check "the upcoming block shows once per work day" $(echo "$OUT" | grep -q 'memory-upcoming'; [ $? -ne 0 ]; echo $?)
+
+echo "capture sweep"
+TR="$TMP/transcripts"; mkdir -p "$TR/-proj-a" "$TR/-proj-game"
+NOWISO=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
+u() { jq -cn --arg t "$1" --arg c "$2" --arg ts "$NOWISO" --argjson side "${3:-false}" '{type:"user", isSidechain:$side, timestamp:$ts, cwd:$c, message:{role:"user", content:$t}}'; }
+{ u "Elijah hurt his arm at recess today" /proj/a
+  u "<command-name>/clear</command-name>" /proj/a
+  u "a subagent prompt that is long enough" /proj/a true
+  u "ok" /proj/a
+  u "this part is off the record please" /proj/a
+  u "a secret plan after off the record" /proj/a; } > "$TR/-proj-a/s1.jsonl"
+u "game talk that is long enough to keep" /home/AdventureVault > "$TR/-proj-game/s2.jsonl"
+jq '. + {sweep: {exclude: ["AdventureVault"]}}' "$HOME/.claude/memory-config.json" > "$TMP/c" && mv "$TMP/c" "$HOME/.claude/memory-config.json"
+OUT=$(MEMORY_TRANSCRIPTS="$TR" "$T/memory-sweep.sh" collect)
+P="$HOME/.claude/.memory-sweep/pending.md"
+check "the sweep reports what it collected" $(echo "$OUT" | grep -q '^1 prompts from 1 sessions'; echo $?)
+check "the sweep keeps a real prompt" $(grep -q 'Elijah hurt his arm' "$P"; echo $?)
+check "the sweep skips command wrappers, short prompts and subagents" $(grep -qE 'command-name|^- ok$|subagent prompt' "$P"; [ $? -ne 0 ]; echo $?)
+check "the sweep drops everything from off the record on" $(grep -q 'secret plan\|off the record' "$P"; [ $? -ne 0 ]; echo $?)
+check "the sweep skips an excluded working directory" $(grep -q 'game talk' "$P"; [ $? -ne 0 ]; echo $?)
+OUT=$("$T/memory-doctor.sh" --brief); check "the doctor reports a waiting sweep" $(echo "$OUT" | grep -q 'capture-sweep'; echo $?)
+"$T/memory-sweep.sh" done
+check "done clears the sweep" $([ ! -f "$P" ] && [ -s "$HOME/.claude/.memory-sweep/last" ]; echo $?)
+OUT=$(MEMORY_TRANSCRIPTS="$TR" "$T/memory-sweep.sh" collect)
+check "the next sweep starts where the last one ended" $([ -z "$OUT" ] && [ ! -f "$P" ]; echo $?)
 
 echo "default backend"
 cat > "$HOME/.claude/memory-config.json" <<'EOF'

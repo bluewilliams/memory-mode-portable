@@ -45,7 +45,8 @@ Once installed at the user level (`~/.claude/`), Claude will - in **every projec
 ## Prerequisites
 
 - **Claude Code** (CLI, desktop app, or IDE extension) - this is what Memory Mode extends
-- **jq** - used by the auto-save hooks (`brew install jq` on macOS, `apt install jq` on Linux)
+- **jq** - used by the auto-save hooks (`brew install jq` on macOS, `sudo apt install jq` on Debian/Ubuntu, `sudo dnf install jq` on Fedora)
+- **macOS or Linux** (tested on macOS and Ubuntu 24.04). Windows: see `install-windows.sh` (not yet tested on Windows)
 - **git** - for cloning this repo and for branch tracking
 - **Obsidian** (optional) - only needed if you choose the Obsidian backend. Free at [obsidian.md](https://obsidian.md)
 
@@ -63,6 +64,18 @@ claude
 ```
 
 That's it. Two steps. The installer handles everything - backend selection, hooks, Dataview plugin (if Obsidian), templates, and configuration. Memory is always on.
+
+### First time with Obsidian
+
+Obsidian is optional. Without it, memory lives in plain markdown under `~/.claude/projects/`. With it, you also get a browsable dashboard, a graph of people and projects, and an app to read and edit what Claude remembers.
+
+1. Install Obsidian from [obsidian.md](https://obsidian.md) (on Linux: the `.deb`, AppImage, Snap or Flatpak). You do not need an account, sync or any plugin set up first. With the Flatpak build, make sure Obsidian can read the vault folder; the installer was not tested with the Flatpak sandbox.
+2. Run `./install.sh`, type your name and role, and choose `2) Obsidian`. Press Enter to create a new vault at `~/Obsidian/ClaudeMind`, or pick an existing vault from the list.
+3. In Obsidian, choose **Open folder as vault** and select the vault folder.
+4. When Obsidian asks about community plugins, choose **Trust author and enable plugins**. The installer already added Dataview, which the dashboard needs.
+5. Open `!Dashboard` at the vault root. It fills in as you work.
+
+Keep the vault in a local folder that only you can read. If you sync it (Obsidian Sync, iCloud), remember that it holds what Claude learns about you and your work.
 
 **What to expect**: Claude will greet you by name (once you fill in your profile), remember what you were working on between sessions, persist important decisions and analyses to files, and recover seamlessly when long sessions hit context limits.
 
@@ -182,15 +195,15 @@ Your Obsidian Vault/
 
 ### Breadcrumb System
 
-The vault uses lightweight **breadcrumb index files** so Claude can know what exists without reading every note. On session start, Claude reads `.claude-state/knowledge-map.md` — a compact anchor that lists every folder, what lives there, and the breadcrumb for that category. Each high-volume folder also has its own index:
+The vault uses lightweight **breadcrumb index files** so Claude can know what exists without reading every note. On session start, Claude reads `.claude-state/knowledge-map.md` - a compact anchor that lists every folder, what lives there, and the breadcrumb for that category. Each high-volume folder also has its own index:
 
 - `People/_Preferences.md` has a **People Roster** section listing everyone with one-line summaries
-- `Projects/_Index.md`, `Decisions/_Index.md`, `Analysis/_Index.md` — dated or categorized indexes
+- `Projects/_Index.md`, `Decisions/_Index.md`, `Analysis/_Index.md` - dated or categorized indexes
 - `Resources/_Resource Index.md`, `Brag/_Brag Dashboard.md`, `Meetings/_Meeting Index.md`
 
 **Write-through rule**: when a new note is created in one of these folders, Claude also adds a line to the folder's breadcrumb. Stale breadcrumbs break retrieval, so they're kept current.
 
-This means when you mention a name, project, or topic, Claude checks the right breadcrumb first — and doesn't claim "I don't have notes on that" before looking.
+This means when you mention a name, project, or topic, Claude checks the right breadcrumb first - and doesn't claim "I don't have notes on that" before looking.
 
 ## Usage
 
@@ -209,6 +222,22 @@ Just start working. Memory is always on. Every project auto-initializes on first
 ### How Recovery Works
 
 Claude writes a breadcrumb at the end of each response. If it's missing at the start of the next response, compaction occurred and Claude recovers automatically: reads the global index, hot cache, preferences, and resumes seamlessly.
+
+## What's New in v2.4
+
+v2.4 is about remembering like a person does: by judgment, about anything, and at the right moment.
+
+- **Capture by judgment.** On every prompt Claude asks one question: would a thoughtful friend still remember this in a month? Topic and keywords do not matter. What the user says, what Claude observes in the work, and what it infers (labeled as an inference) all count. The hook's capture cues now cover life events, feelings, dates ahead and plans, and they only add weight: they are no longer the gate.
+- **File by subject, never drop.** A fact about a person goes to a dated `## Timeline` in their People note. A subject that keeps coming up gets a `Topics/` note. No fact is lost because no category fits.
+- **Fact-level recall.** Every bullet in a People or Topics note is searchable, and when a person is named, the recall block carries their two newest Timeline lines (`Latest: ...`). Related-note recall now runs on every prompt with a strong topic match, not only the first one, and rare terms rank above common ones.
+- **Recall cues.** A prompt that points back ("remember when", "last time", "you said") gets a `<memory-recall-cue>`: answer from memory, not a guess.
+- **A calendar.** `~/.claude/user/calendar.md` holds birthdays, events, deadlines and follow-ups. Once per work day the hook shows what is close (`<memory-upcoming>`), and Claude asks how things went after they pass. `tools/memory-calendar.sh` reads it.
+- **A daily capture sweep.** The doctor collects what the user typed in every session since the last sweep (`tools/memory-sweep.sh`; it skips subagents, commands, "off the record" and excluded folders). A background pass captures what was missed in the moment.
+- **Linux fixes.** GNU `stat` was read with BSD flags, so the recall index looked stale on every prompt and the status scan lost file names. All 79 tests now pass on macOS and Ubuntu 24.04.
+- **Easier first install.** The installer checks for `jq` and `git`, asks your name and role, creates every folder, breadcrumb index and the knowledge map, and gives clear Obsidian steps.
+- **Tests:** 79 checks in `tests/hooks-test.sh`.
+
+Upgrading from v2.3: copy `hooks/*.sh` to `~/.claude/hooks/`, `tools/*.sh` to `~/.claude/tools/`, and `MEMORY.md` and `USER.md` to `~/.claude/`, or rerun `./install.sh`. Create `~/.claude/user/calendar.md` (the installer does it). Optional: add `"sweep": { "exclude": ["SomeFolder"] }` to `memory-config.json` for folders whose sessions the sweep should skip.
 
 ## What's New in v2.3
 
@@ -292,10 +321,10 @@ Memory Mode isn't just about remembering code. It's about Claude learning who yo
 ### How Claude Learns
 
 1. **Explicit** - Tell Claude directly: "I prefer concise explanations"
-2. **Observed** - Claude notices patterns and asks: "Should I remember this?"
+2. **Judgment** - Claude decides what is worth keeping, from anything it learns: what you say, what it sees in the work, and what it infers (labeled as an inference)
 3. **Feedback** - Tell Claude what worked: "That approach was perfect"
 
-Claude always announces what it stores and references preferences when using them.
+Most captures are silent. Ask `/user` any time to see what Claude holds.
 
 ### The Compound Effect
 
@@ -310,7 +339,7 @@ This is what genuine continuity looks like. Not just remembering facts, but buil
 ### Privacy
 
 You're always in control:
-- Claude announces what it stores (`Noted: [what was stored]`)
+- Everything Claude stores is in plain files you can read (`/user` shows a summary)
 - `/user forget X` removes specific information
 - "Off the record" stops all memory writes for a session
 - `/memory disable` permanently opts out a project
@@ -439,6 +468,14 @@ See [OBSIDIAN-DESIGN.md](OBSIDIAN-DESIGN.md) for the full architectural design i
 
 ## Version History
 
+### v2.4.0 - Judgment Capture, Fact Recall, Calendar
+
+- Capture Reflex in MEMORY.md: judgment on every prompt, any topic, any source; inferences labeled; file by subject (People `## Timeline`, `Topics/`)
+- Recall indexes every People and Topics bullet; recalled people carry their newest facts; related-note recall on every prompt; `<memory-recall-cue>` for references to the past
+- `calendar.md` with `tools/memory-calendar.sh` and the `<memory-upcoming>` block; follow-ups and close-out
+- Daily capture sweep (`tools/memory-sweep.sh`) run by the doctor
+- Linux: GNU `stat` order and format fixed in recall, doctor and status; installer prerequisite check, name and role prompt, full vault scaffold
+
 ### v2.3.0 - Recall and Daily Maintenance
 
 - Associative recall hook (`<memory-recall>`) and `tools/memory-recall.sh` (ranked query over notes and user memory)
@@ -450,7 +487,7 @@ See [OBSIDIAN-DESIGN.md](OBSIDIAN-DESIGN.md) for the full architectural design i
 - Added `.claude-state/knowledge-map.md` as a session-start anchor that maps every folder in the vault to its breadcrumb index
 - Added folder-level breadcrumbs: `Projects/_Index.md`, `Decisions/_Index.md`, `Analysis/_Index.md` (joining the existing Resource Index, Brag Dashboard, Meeting Index, and People Roster)
 - Updated session-start protocol: Claude now reads the knowledge map on every session and defaults to memory rather than claiming ignorance when a known topic comes up
-- Expanded `memory-nudge.sh` with a fourth trigger — pure-conversation cycles (5+ prompts with zero file activity) — so long discussions that produce no file edits still get nudged to save decisions, findings, or context shifts
+- Expanded `memory-nudge.sh` with a fourth trigger - pure-conversation cycles (5+ prompts with zero file activity) - so long discussions that produce no file edits still get nudged to save decisions, findings, or context shifts
 - Added write-through maintenance rule: when a note is created in a breadcrumb-tracked folder, the breadcrumb gets updated in the same operation
 
 ### v2.0.0 - Obsidian Backend
@@ -537,13 +574,13 @@ Use the Windows installer instead, from **Git Bash**:
 # Default backend (~/.claude/projects)
 ./install-windows.sh
 
-# Obsidian backend — point at your vault. If the vault lives on a host shared into the VM
+# Obsidian backend - point at your vault. If the vault lives on a host shared into the VM
 # (e.g. a Parallels share), pass that path; bash resolves it directly:
 ./install-windows.sh --obsidian "//Mac/Home/Documents/My Vault/MyVault"
 ```
 
 It bundles `jq.exe` into `~/.claude/bin`, installs the hooks plus the `hooks/win-run.sh` wrapper,
 and merges `settings.json` hook commands of the form
-`"…\bash.exe" "…\win-run.sh" <hook>` — so Git bash runs the hook with `jq` on PATH and Claude
+`"…\bash.exe" "…\win-run.sh" <hook>` - so Git bash runs the hook with `jq` on PATH and Claude
 Code's hook JSON piped through on stdin. Existing `settings.json` keys are preserved.
 Requires Git for Windows, Node.js (ships with Claude Code), and curl.

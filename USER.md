@@ -2,7 +2,7 @@
 
 Persistent user preference tracking for Claude Code. Builds understanding of the user over time - communication style, technical background, preferences, and working patterns.
 
-**Version**: 1.7.0
+**Version**: 1.8.0
 **Key Principle**: Two-tier storage - global profile (follows user across projects) + project-specific context, all centralized under `~/.claude/`.
 
 ## Architecture
@@ -17,6 +17,7 @@ Persistent user preference tracking for Claude Code. Builds understanding of the
 ├── technical.md                       # Skills, interests, learning goals
 ├── observations.md                    # Patterns noticed (dated, with evidence and confidence)
 ├── moments.md                         # Dated log of interesting things (stories, opinions, wins, events)
+├── calendar.md                        # Dates ahead: birthdays, events, deadlines, follow-ups
 └── feedback.md                        # What's worked/not worked
 
 ~/.claude/projects/{project-key}/      # PROJECT-SPECIFIC (centralized)
@@ -41,6 +42,8 @@ Each fact about the user has one canonical home, so copies cannot drift apart:
 | How they like to work, standing rules | `preferences.md` |
 | Patterns you noticed | `observations.md` |
 | Interesting moments (dated, one line each) | `moments.md` |
+| Dates ahead (birthdays, events, deadlines, follow-ups) | `calendar.md` |
+| News and facts about another person | their `People/{name}.md` > `## Timeline` |
 | Skills, stacks, tools | `technical.md` |
 
 With the Obsidian backend, the user's own `People/{user}.md` note does not repeat profile facts. It holds the wikilinks that place the user in the graph (family, manager, team, projects), a line saying the canonical profile is `~/.claude/user/profile.md`, and long-form guidance too big to load every session (for example, how to support a recurring theme). Give it a `summary:` so recall finds it.
@@ -49,7 +52,9 @@ With the Obsidian backend, the user's own `People/{user}.md` note does not repea
 
 ## Learning Protocol
 
-### Three Ways to Learn
+### How to Learn
+
+Use judgment, the way a thoughtful friend does. Anything you learn from any source can be worth keeping: what the user says, what you observe in their work, what other people write, and what you infer. Store it when it is likely to matter later (MEMORY.md > Capture Reflex). Label inferences as inferences, with the evidence.
 
 1. **Explicit** - User directly shares information
    - "I prefer concise explanations"
@@ -60,7 +65,7 @@ With the Obsidian backend, the user's own `People/{user}.md` note does not repea
    - Store it directly in `observations.md` with the evidence and a confidence (low / medium / high). Do not stop the work to ask.
    - Raise the confidence each time new evidence agrees. Remove it when evidence disagrees.
    - Ask the user only before an observation changes your behavior in a way they would notice. Otherwise use it quietly.
-   - Never infer sensitive things the user did not share (health, politics, religion, finances, relationships).
+   - Inferences about sensitive areas (health, money, relationships) are allowed when they help you support the user. Keep them kind, label them as inferences with the evidence, and never use them to judge or embarrass.
 
 3. **Feedback** - End-of-session or explicit feedback
    - "That explanation was too long"
@@ -319,15 +324,14 @@ What's worked well and what hasn't.
 ### Core Principles
 1. **Transparency**: User sees everything stored
 2. **Control**: User can delete anything with `/user forget`
-3. **Consent**: Observations require confirmation before storing
+3. **Judgment**: Claude decides what is worth keeping, like a trusted friend would. Inferences are labeled as inferences
 4. **Portability**: Export/import between machines
 5. **Centralized**: All data under `~/.claude/` - no project directory pollution
 
 ### What We DON'T Store
-- Passwords or secrets
-- Sensitive personal information
-- Information user asks to forget
-- Unconfirmed observations (flagged as pending only)
+- Passwords, secrets, tokens or credentials
+- Information the user asks to forget, or says "off the record"
+- Guesses presented as facts (label every inference)
 
 ## Permissions
 
