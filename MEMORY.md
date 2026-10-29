@@ -527,6 +527,8 @@ Notes go where they BELONG, not where the terminal is:
 
 ## Vault Maintenance
 
+**Maintenance is curation, not cleanup by deletion.** Its job is to keep the vault TRUE and CONNECTED: correct wrong facts, repair and add links, and consolidate duplicate info into one fuller note. Every note and its content are linked to other notes, so removing something also breaks the links into and out of it, which loses more than the text. Deletion is the rare last step, and only for a husk left empty AFTER its content was merged somewhere better, or a Claude-authored status block whose detail is already preserved in a durable note. Never delete for age or staleness, and when in doubt, keep it and connect it.
+
 **Session start** (~30s): Mark stale active sessions as completed. Verify project note exists. Check hot cache freshness AND apply Hot Cache Hygiene (prune the current project's `recent.md` per the rule in Tiered Retrieval - drop DONE/SUPERSEDED blocks, compress aging open loops, enforce the ~20KB tripwire). This keeps Tier 1 cheap for the rest of the session.
 
 **Checkpoints**: Fix broken links and formatting in notes being touched.
@@ -540,7 +542,7 @@ Notes go where they BELONG, not where the terminal is:
 5. **Big caches**: prune hot caches by Hot Cache Hygiene; compress Topic Map rows to pointers.
 6. **Current Chapter and observations**: re-date or replace stale Current Chapter lines. Promote moments that repeat into an observation.
 7. **Calendar**: close out one-time items long past (record the outcome, remove the line).
-8. **Legacy state and em dashes**: a legacy state folder is a Claude-authored projection, but its `recent.md` can hold the ONLY copy of a fact that never reached a durable note. Before you remove one, OPEN it and confirm its salient content exists in a durable note (session, analysis, decision, People); when the content is not clearly preserved, or you are unsure, KEEP the folder and surface it for the user. Age is never a reason to remove anything. Treat removal as irreversible: `.claude-state` is usually not in git, and there is no Trash or Time Machine to fall back on. Never bulk-delete state folders in one pass, and confirm each removal with the user when there is any doubt. Prefer leaving a folder in place over deleting it. Replace em dashes in notes you touch.
+8. **Legacy state and em dashes**: a legacy state folder is a Claude-authored projection, but its `recent.md` holds real content AND wikilinks into the graph, so it can carry the ONLY copy of a fact or a link that no durable note has. CURATE it, do not delete it: open it, and MERGE anything unique (facts, open loops, links) into the right project's note or cache, repointing the links as you go. Only when nothing unique remains, and its content is confirmed preserved, remove the empty husk. Age is never a reason to remove anything. Treat removal as irreversible: `.claude-state` is usually not in git, and there is no Trash or Time Machine to fall back on. Never bulk-delete state folders in one pass; when there is any doubt, keep the folder and surface it for the user. Replace em dashes in notes you touch.
 
 Leave anything that needs the user's call (a merge you are not sure of, a status they may disagree with) for one short question at a natural pause. Write the date to `.claude-state/last-maintenance` when the pass is done. Full report any time: `~/.claude/tools/memory-doctor.sh`.
 
